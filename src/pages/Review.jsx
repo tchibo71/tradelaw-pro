@@ -59,8 +59,8 @@ export default function Review() {
         </div>
 
         <Card className="shadow-xl border-2 mb-6">
-          <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white">
-            <CardTitle className="text-2xl">Questions to Review</CardTitle>
+          <CardHeader className="bg-gradient-to-r from-purple-100 to-indigo-100">
+            <CardTitle className="text-2xl text-purple-900">Questions to Review</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             {questionsToReview.length === 0 ? (
@@ -69,7 +69,7 @@ export default function Review() {
                 <p className="text-gray-500 text-lg mb-2">No questions to review</p>
                 <p className="text-gray-400 mb-6">You're doing great! All caught up.</p>
                 <Link to={createPageUrl('Study')}>
-                  <Button className="bg-navy-600 hover:bg-navy-700">
+                  <Button className="bg-navy-600 hover:bg-navy-700 text-gray-900">
                     Continue Studying
                   </Button>
                 </Link>
@@ -110,7 +110,7 @@ export default function Review() {
 
                 <div className="pt-4">
                   <Link to={createPageUrl('Study')}>
-                    <Button className="w-full bg-purple-600 hover:bg-purple-700 h-12">
+                    <Button className="w-full bg-purple-600 hover:bg-purple-700 text-gray-900 h-12">
                       Practice These Questions
                     </Button>
                   </Link>

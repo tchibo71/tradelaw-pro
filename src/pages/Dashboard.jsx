@@ -168,9 +168,9 @@ export default function Dashboard() {
                       <RotateCcw className="h-8 w-8 text-purple-600" />
                     </div>
                     {questionsToReview > 0 && (
-                      <span className="px-3 py-1 bg-purple-600 text-white rounded-full text-sm font-bold">
-                        {questionsToReview}
-                      </span>
+                     <span className="px-3 py-1 bg-purple-200 text-purple-900 rounded-full text-sm font-bold">
+                       {questionsToReview}
+                     </span>
                     )}
                   </div>
                   <h3 className="text-2xl font-bold text-navy-900 mb-2">Review Mistakes</h3>
@@ -185,11 +185,11 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <Card className="shadow-xl border-2">
-          <CardHeader className="bg-gradient-to-r from-navy-600 to-indigo-700 text-white">
+          <CardHeader className="bg-gradient-to-r from-navy-100 to-indigo-100">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xl">Recent Activity</CardTitle>
+              <CardTitle className="text-xl text-navy-900">Recent Activity</CardTitle>
               <Link to={createPageUrl('History')}>
-                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                <Button variant="ghost" size="sm" className="text-navy-900 hover:bg-navy-200">
                   <History className="h-4 w-4 mr-2" />
                   View All
                 </Button>
@@ -203,7 +203,7 @@ export default function Dashboard() {
                 <p className="text-gray-500 text-lg mb-2">No study sessions yet</p>
                 <p className="text-gray-400 mb-6">Start your first session to begin tracking your progress</p>
                 <Link to={createPageUrl('Study')}>
-                  <Button className="bg-navy-600 hover:bg-navy-700">
+                  <Button className="bg-navy-600 hover:bg-navy-700 text-gray-900">
                     <Play className="h-4 w-4 mr-2" />
                     Start First Session
                   </Button>

@@ -212,12 +212,12 @@ Make questions professional, accurate, and exam-worthy. Ensure true/false questi
         </div>
 
         <Card className="shadow-2xl border-2">
-          <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white">
+          <CardHeader className="bg-gradient-to-r from-purple-100 to-indigo-100">
             <div className="flex items-center gap-3">
-              <Sparkles className="h-8 w-8" />
+              <Sparkles className="h-8 w-8 text-purple-700" />
               <div>
-                <CardTitle className="text-2xl">Generate Questions</CardTitle>
-                <CardDescription className="text-purple-100">
+                <CardTitle className="text-2xl text-purple-900">Generate Questions</CardTitle>
+                <CardDescription className="text-purple-800">
                   AI-powered question generation using real legal data
                 </CardDescription>
               </div>
@@ -262,7 +262,7 @@ Make questions professional, accurate, and exam-worthy. Ensure true/false questi
             <Button
               onClick={generateQuestions}
               disabled={!selectedTrade || !selectedJurisdiction || generating}
-              className="w-full h-14 text-lg bg-purple-600 hover:bg-purple-700"
+              className="w-full h-14 text-lg bg-purple-600 hover:bg-purple-700 text-gray-900"
             >
               {generating ? (
                 <>

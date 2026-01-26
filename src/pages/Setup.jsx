@@ -47,16 +47,16 @@ export default function Setup() {
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-navy-600 mb-4">
-            <BookOpen className="h-8 w-8 text-white" />
+            <BookOpen className="h-8 w-8 text-gray-900" />
           </div>
           <h1 className="text-4xl font-bold text-navy-900 mb-2">TradeProLaw</h1>
           <p className="text-gray-600 text-lg">Master the laws of your trade</p>
         </div>
 
         <Card className="shadow-2xl border-2">
-          <CardHeader className="bg-gradient-to-r from-navy-600 to-indigo-700 text-white">
-            <CardTitle className="text-2xl">Setup Your Profile</CardTitle>
-            <CardDescription className="text-blue-100">
+          <CardHeader className="bg-gradient-to-r from-navy-100 to-indigo-100">
+            <CardTitle className="text-2xl text-navy-900">Setup Your Profile</CardTitle>
+            <CardDescription className="text-blue-900">
               Select your trades and jurisdiction to get started with personalized study material
             </CardDescription>
           </CardHeader>
@@ -76,7 +76,7 @@ export default function Setup() {
               <Button
                 onClick={handleSave}
                 disabled={!canProceed || loading}
-                className="w-full h-14 text-lg bg-navy-600 hover:bg-navy-700 text-white"
+                className="w-full h-14 text-lg bg-navy-600 hover:bg-navy-700 text-gray-900"
               >
                 {loading ? 'Saving...' : 'Save & Continue'}
                 <ArrowRight className="ml-2 h-5 w-5" />

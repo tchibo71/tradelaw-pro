@@ -1,18 +1,18 @@
-import Setup from './pages/Setup';
 import Dashboard from './pages/Dashboard';
-import Study from './pages/Study';
-import Review from './pages/Review';
-import History from './pages/History';
 import GenerateQuestions from './pages/GenerateQuestions';
+import History from './pages/History';
+import Review from './pages/Review';
+import Setup from './pages/Setup';
+import Study from './pages/Study';
 
 
 export const PAGES = {
-    "Setup": Setup,
     "Dashboard": Dashboard,
-    "Study": Study,
-    "Review": Review,
-    "History": History,
     "GenerateQuestions": GenerateQuestions,
+    "History": History,
+    "Review": Review,
+    "Setup": Setup,
+    "Study": Study,
 }
 
 export const pagesConfig = {

@@ -53,8 +53,8 @@ export default function History() {
         </div>
 
         <Card className="shadow-xl border-2">
-          <CardHeader className="bg-gradient-to-r from-navy-600 to-indigo-700 text-white">
-            <CardTitle className="text-2xl">Study History</CardTitle>
+          <CardHeader className="bg-gradient-to-r from-navy-100 to-indigo-100">
+            <CardTitle className="text-2xl text-navy-900">Study History</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             {sessions.length === 0 ? (
@@ -63,7 +63,7 @@ export default function History() {
                 <p className="text-gray-500 text-lg mb-2">No study sessions yet</p>
                 <p className="text-gray-400 mb-6">Start studying to build your history</p>
                 <Link to={createPageUrl('Study')}>
-                  <Button className="bg-navy-600 hover:bg-navy-700">
+                  <Button className="bg-navy-600 hover:bg-navy-700 text-gray-900">
                     Start First Session
                   </Button>
                 </Link>
