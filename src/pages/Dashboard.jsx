@@ -14,7 +14,8 @@ import {
   Play,
   RotateCcw,
   Settings,
-  History
+  History,
+  Sparkles
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -85,12 +86,20 @@ export default function Dashboard() {
                 {user.preferred_trades?.join(', ')} • {user.preferred_jurisdiction}
               </p>
             </div>
-            <Link to={createPageUrl('Setup')}>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Change Preferences
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link to={createPageUrl('GenerateQuestions')}>
+                <Button variant="outline" size="sm" className="bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Questions
+                </Button>
+              </Link>
+              <Link to={createPageUrl('Setup')}>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Change Preferences
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
 
