@@ -29,7 +29,7 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
     <Card className="w-full max-w-3xl mx-auto shadow-xl border-2">
       <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
         <div className="flex justify-between items-start gap-4">
-          <CardTitle className="text-lg md:text-xl text-navy-900 leading-relaxed">
+          <CardTitle className="text-xl md:text-2xl text-navy-900 leading-relaxed select-text">
             {question.question_text}
           </CardTitle>
           <Badge variant="outline" className="shrink-0">
@@ -75,7 +75,7 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
                   text-left transition-all duration-200 flex items-center justify-between
                   ${!showResult && 'cursor-pointer'}`}
               >
-                <span className="font-medium">{option}</span>
+                <span className="font-medium text-base select-text">{option}</span>
                 {showResult && isCorrectOption && (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 )}
@@ -97,11 +97,11 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
             >
               <div className="flex items-start gap-2">
                 <BookOpen className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-semibold text-blue-900 mb-1">Explanation</p>
-                  <p className="text-sm text-blue-800">{question.explanation}</p>
+                <div className="select-text">
+                  <p className="font-semibold text-blue-900 mb-2">Explanation</p>
+                  <p className="text-base text-blue-800 leading-relaxed">{question.explanation}</p>
                   {question.law_citation && (
-                    <p className="text-xs text-blue-700 mt-2 font-mono">
+                    <p className="text-sm text-blue-700 mt-3 font-mono bg-white px-2 py-1 rounded">
                       Citation: {question.law_citation}
                     </p>
                   )}
