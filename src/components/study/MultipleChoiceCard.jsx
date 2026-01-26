@@ -37,8 +37,8 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
           </Badge>
         </div>
         <div className="flex flex-wrap gap-2 mt-3">
-          <Badge className="bg-navy-600 text-white">{question.trade}</Badge>
-          <Badge variant="secondary">{question.jurisdiction}</Badge>
+          <Badge className="bg-navy-600 text-navy-600 border-2 border-navy-600 bg-navy-100">{question.trade}</Badge>
+          <Badge className="bg-gray-700 text-gray-700 border-2 border-gray-700 bg-gray-100">{question.jurisdiction}</Badge>
         </div>
       </CardHeader>
       
