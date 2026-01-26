@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy-50: 235 244 255;
+    --navy-100: 219 234 254;
+    --navy-200: 191 219 254;
+    --navy-600: 30 58 95;
+    --navy-700: 24 46 76;
+    --navy-800: 19 37 61;
+    --navy-900: 15 28 46;
+    
+    --gold: 212 175 55;
+  }
+}
+
+@layer utilities {
+  .bg-navy-50 {
+    background-color: rgb(var(--navy-50));
+  }
+  .bg-navy-100 {
+    background-color: rgb(var(--navy-100));
+  }
+  .bg-navy-200 {
+    background-color: rgb(var(--navy-200));
+  }
+  .bg-navy-600 {
+    background-color: rgb(var(--navy-600));
+  }
+  .bg-navy-700 {
+    background-color: rgb(var(--navy-700));
+  }
+  .bg-navy-800 {
+    background-color: rgb(var(--navy-800));
+  }
+  .bg-navy-900 {
+    background-color: rgb(var(--navy-900));
+  }
+  
+  .text-navy-600 {
+    color: rgb(var(--navy-600));
+  }
+  .text-navy-700 {
+    color: rgb(var(--navy-700));
+  }
+  .text-navy-800 {
+    color: rgb(var(--navy-800));
+  }
+  .text-navy-900 {
+    color: rgb(var(--navy-900));
+  }
+  
+  .border-navy-200 {
+    border-color: rgb(var(--navy-200));
+  }
+  .border-navy-600 {
+    border-color: rgb(var(--navy-600));
+  }
+}
