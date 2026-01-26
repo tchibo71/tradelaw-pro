@@ -24,7 +24,7 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
     onAnswer(selectedAnswer, isCorrect);
   };
 
-  const isCorrect = selectedAnswer === question.correct_answer;
+  const isCorrect = selectedAnswer?.trim() === question.correct_answer?.trim();
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl border-2">
