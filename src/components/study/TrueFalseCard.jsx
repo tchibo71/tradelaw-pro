@@ -12,11 +12,12 @@ export default function TrueFalseCard({ question, onAnswer }) {
   const handleSelect = (answer) => {
     if (showResult) return;
     setSelectedAnswer(answer);
-    const isCorrect = answer === question.correct_answer;
     setShowResult(true);
-    setTimeout(() => {
-      onAnswer(answer, isCorrect);
-    }, 2500);
+  };
+
+  const handleNext = () => {
+    const isCorrect = selectedAnswer === question.correct_answer;
+    onAnswer(selectedAnswer, isCorrect);
   };
 
   const isCorrect = selectedAnswer === question.correct_answer;
@@ -89,15 +90,15 @@ export default function TrueFalseCard({ question, onAnswer }) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200"
+              className="mt-6 p-5 rounded-lg bg-blue-600 border-2 border-blue-700"
             >
-              <div className="flex items-start gap-2">
-                <BookOpen className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
-                <div className="select-text">
-                  <p className="font-semibold text-blue-900 mb-2">Explanation</p>
-                  <p className="text-base text-blue-800 leading-relaxed">{question.explanation}</p>
+              <div className="flex items-start gap-3">
+                <BookOpen className="h-6 w-6 text-white mt-0.5 shrink-0" />
+                <div className="select-text flex-1">
+                  <p className="font-bold text-white text-lg mb-2">Explanation</p>
+                  <p className="text-base text-white leading-relaxed">{question.explanation}</p>
                   {question.law_citation && (
-                    <p className="text-sm text-blue-700 mt-3 font-mono bg-white px-2 py-1 rounded">
+                    <p className="text-sm text-blue-100 mt-3 font-mono bg-blue-800 px-3 py-2 rounded">
                       Citation: {question.law_citation}
                     </p>
                   )}
@@ -107,6 +108,17 @@ export default function TrueFalseCard({ question, onAnswer }) {
           )}
         </AnimatePresence>
       </CardContent>
+
+      {showResult && (
+        <CardFooter className="pt-4">
+          <Button
+            onClick={handleNext}
+            className="w-full bg-navy-600 hover:bg-navy-700 text-white h-14 text-lg font-semibold"
+          >
+            Next Question →
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 }
