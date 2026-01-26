@@ -20,7 +20,7 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
   };
 
   const handleNext = () => {
-    const isCorrect = selectedAnswer === question.correct_answer;
+    const isCorrect = selectedAnswer?.trim() === question.correct_answer?.trim();
     onAnswer(selectedAnswer, isCorrect);
   };
 
