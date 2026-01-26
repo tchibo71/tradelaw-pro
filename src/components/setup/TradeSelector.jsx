@@ -2,13 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Check, Briefcase, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from '@/components/ui/command';
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -360,6 +353,7 @@ export default function TradeSelector({ selectedTrades, onSelectionChange, juris
   const [regulatedTrades, setRegulatedTrades] = useState(new Set());
   const [checkingRegulation, setCheckingRegulation] = useState(false);
   const [regulationChecked, setRegulationChecked] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (jurisdiction && jurisdiction !== 'Federal') {
@@ -458,37 +452,43 @@ Return ONLY trades that are actually regulated in ${jurisdiction}. Do not includ
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
-          <Command>
-            <CommandInput placeholder="Search trades..." />
-            <CommandEmpty>No trade found.</CommandEmpty>
-            <CommandGroup className="max-h-64 overflow-auto">
-              {TRADES.map((trade) => {
-                const regulated = isRegulated(trade);
-                const showWarning = jurisdiction && regulationChecked && !regulated;
-                
-                return (
-                  <CommandItem
-                    key={trade}
-                    onSelect={() => toggleTrade(trade)}
-                    className={`cursor-pointer ${!regulated && jurisdiction && regulationChecked ? 'opacity-50' : ''}`}
-                  >
-                    <Check
-                      className={`mr-2 h-4 w-4 ${
-                        selectedTrades.includes(trade) ? "opacity-100" : "opacity-0"
-                      }`}
-                    />
-                    <span className={!regulated && jurisdiction && regulationChecked ? 'text-gray-500' : ''}>
-                      {trade}
-                    </span>
-                    {showWarning && (
-                      <AlertCircle className="ml-auto h-4 w-4 text-amber-500" />
-                    )}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </Command>
+        <PopoverContent className="w-full p-4 max-h-96 overflow-y-auto" align="start">
+          <input
+            type="text"
+            placeholder="Search trades..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-navy-600"
+          />
+          <div className="space-y-1">
+            {TRADES.filter(trade => trade.toLowerCase().includes(searchQuery.toLowerCase())).map((trade) => {
+              const regulated = isRegulated(trade);
+              const showWarning = jurisdiction && regulationChecked && !regulated;
+              
+              return (
+                <div
+                  key={trade}
+                  onClick={() => toggleTrade(trade)}
+                  className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${!regulated && jurisdiction && regulationChecked ? 'opacity-50' : ''}`}
+                >
+                  <Check
+                    className={`h-4 w-4 shrink-0 ${
+                      selectedTrades.includes(trade) ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
+                  <span className={`text-sm ${!regulated && jurisdiction && regulationChecked ? 'text-gray-500' : ''}`}>
+                    {trade}
+                  </span>
+                  {showWarning && (
+                    <AlertCircle className="ml-auto h-4 w-4 shrink-0 text-amber-500" />
+                  )}
+                </div>
+              );
+            })}
+            {TRADES.filter(trade => trade.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">No trade found.</p>
+            )}
+          </div>
         </PopoverContent>
       </Popover>
       
