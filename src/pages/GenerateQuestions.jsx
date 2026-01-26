@@ -117,24 +117,29 @@ export default function GenerateQuestions() {
       // Use AI to generate questions based on trade and jurisdiction
       const prompt = `Generate 5 realistic professional certification exam questions for ${selectedTrade} professionals regarding ${selectedJurisdiction} laws and regulations.
 
+CRITICAL FORMATTING RULES:
+- TRUE/FALSE questions: Must be a complete STATEMENT that can be answered true or false. Example: "In Tennessee, farriers must be licensed by the state board." NOT "Which of the following is true about..."
+- MULTIPLE CHOICE questions: Must include the complete question AND list all 4 options in the question_text. The options array should contain the same 4 choices.
+- FILL IN BLANK questions: Must have a clear blank indicated with _____ in the question.
+
 For each question, provide:
-1. A realistic question text that would appear on a professional exam
-2. Question type (multiple_choice, true_false, or fill_in_blank)
-3. The correct answer
-4. For multiple choice: 4 plausible answer options
-5. The law type (statute or regulation)
-6. A realistic legal citation (e.g., "OSHA 1926.451", "CA Business Code § 7031", "IRC 2018 Section 301.2")
-7. A detailed explanation referencing the actual legal requirement
-8. Difficulty level (beginner, intermediate, or advanced)
+1. Question text (properly formatted for the question type - see rules above)
+2. Question type: "multiple_choice", "true_false", or "fill_in_blank"
+3. The correct answer (exact text)
+4. For multiple choice: Array of 4 plausible answer options (one must be the correct answer)
+5. Law type: "statute" or "regulation"
+6. A realistic legal citation (e.g., "OSHA 1926.451", "TN Code § 63-13-101", "IRC 2018 Section 301.2")
+7. A detailed explanation (2-3 sentences) referencing the actual legal requirement
+8. Difficulty level: "beginner", "intermediate", or "advanced"
 
 Focus on:
 - Safety regulations (OSHA, building codes)
 - Licensing requirements
-- Professional standards
+- Professional standards  
 - Industry-specific regulations
 - State-specific requirements for ${selectedJurisdiction}
 
-Make the questions professional, accurate, and exam-worthy.`;
+Make questions professional, accurate, and exam-worthy. Ensure true/false questions are STATEMENTS, not "which of the following" questions.`;
 
       const response = await base44.integrations.Core.InvokeLLM({
         prompt: prompt,
