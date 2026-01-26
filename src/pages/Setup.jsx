@@ -61,14 +61,15 @@ export default function Setup() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            <TradeSelector
-              selectedTrades={selectedTrades}
-              onSelectionChange={setSelectedTrades}
-            />
-
             <JurisdictionSelector
               value={jurisdiction}
               onChange={setJurisdiction}
+            />
+
+            <TradeSelector
+              selectedTrades={selectedTrades}
+              onSelectionChange={setSelectedTrades}
+              jurisdiction={jurisdiction}
             />
 
             <div className="pt-4">
