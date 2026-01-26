@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import MultipleChoiceCard from '../components/study/MultipleChoiceCard';
 import TrueFalseCard from '../components/study/TrueFalseCard';
 import FillInBlankCard from '../components/study/FillInBlankCard';
@@ -206,7 +205,12 @@ export default function Study() {
               </p>
             </div>
           </div>
-          <Progress value={progress} className="h-2" />
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-navy-600 h-2 rounded-full transition-all duration-300" 
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
 
         {/* Question Card */}
