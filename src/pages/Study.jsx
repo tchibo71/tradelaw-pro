@@ -8,7 +8,7 @@ import TrueFalseCard from '../components/study/TrueFalseCard';
 import FillInBlankCard from '../components/study/FillInBlankCard';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { createPageUrl } from './utils';
+import { createPageUrl } from '../utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Study() {

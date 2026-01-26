@@ -6,7 +6,7 @@ import TradeSelector from '../components/setup/TradeSelector';
 import JurisdictionSelector from '../components/setup/JurisdictionSelector';
 import { BookOpen, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from './utils';
+import { createPageUrl } from '../utils';
 
 export default function Setup() {
   const [selectedTrades, setSelectedTrades] = useState([]);
