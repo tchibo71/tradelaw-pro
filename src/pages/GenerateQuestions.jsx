@@ -245,6 +245,7 @@ Distribute evenly across trades: ${tradesLabel}. Jurisdiction: ${jurisdiction}. 
         };
       });
 
+      if (questionsToCreate.length === 0) throw new Error('No questions were generated. Please try again.');
       await base44.entities.LawQuestion.bulkCreate(questionsToCreate);
       
       queryClient.invalidateQueries(['questions']);
