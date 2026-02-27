@@ -110,7 +110,24 @@ export default function GenerateQuestions() {
   const [questionCount, setQuestionCount] = useState(5);
   const [generating, setGenerating] = useState(false);
   const [results, setResults] = useState(null);
+  const [tradeSearch, setTradeSearch] = useState('');
+  const [showTradeDropdown, setShowTradeDropdown] = useState(false);
+  const tradeRef = useRef(null);
   const queryClient = useQueryClient();
+
+  const filteredTrades = TRADES.filter(t =>
+    t.toLowerCase().includes(tradeSearch.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (tradeRef.current && !tradeRef.current.contains(e.target)) {
+        setShowTradeDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const addTrade = (trade) => {
     if (!selectedTrades.includes(trade)) {
