@@ -104,11 +104,22 @@ const STATES = [
 ];
 
 export default function GenerateQuestions() {
-  const [selectedTrade, setSelectedTrade] = useState('');
+  const [selectedTrades, setSelectedTrades] = useState([]);
   const [selectedJurisdiction, setSelectedJurisdiction] = useState('');
+  const [questionCount, setQuestionCount] = useState(5);
   const [generating, setGenerating] = useState(false);
   const [results, setResults] = useState(null);
   const queryClient = useQueryClient();
+
+  const addTrade = (trade) => {
+    if (!selectedTrades.includes(trade)) {
+      setSelectedTrades(prev => [...prev, trade]);
+    }
+  };
+
+  const removeTrade = (trade) => {
+    setSelectedTrades(prev => prev.filter(t => t !== trade));
+  };
 
   const generateQuestions = async () => {
     setGenerating(true);
