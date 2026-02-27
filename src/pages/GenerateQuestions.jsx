@@ -181,7 +181,7 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
       });
 
       // Create questions in database
-      const questionsToCreate = response.questions.map(q => {
+      const questionsToCreate = response.questions.map((q, idx) => {
         let correctAnswer = q.correct_answer?.trim();
         const options = (q.options || []).map(o => o?.trim());
 
@@ -189,7 +189,6 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
         if (q.question_type === 'multiple_choice' && options.length > 0) {
           const exactMatch = options.find(opt => opt === correctAnswer);
           if (!exactMatch) {
-            // Try case-insensitive match and use the option's exact text
             const caseMatch = options.find(opt => opt?.toLowerCase() === correctAnswer?.toLowerCase());
             if (caseMatch) correctAnswer = caseMatch;
           }
@@ -201,12 +200,17 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
           if (correctAnswer?.toLowerCase() === 'false') correctAnswer = 'False';
         }
 
+        // Assign trade: use AI-returned trade if valid, otherwise round-robin across selected trades
+        const assignedTrade = selectedTrades.includes(q.trade)
+          ? q.trade
+          : selectedTrades[idx % selectedTrades.length];
+
         return {
           question_text: q.question_text?.trim(),
           question_type: q.question_type,
           correct_answer: correctAnswer,
           options,
-          trade: selectedTrade,
+          trade: assignedTrade,
           jurisdiction: selectedJurisdiction,
           law_type: q.law_type,
           law_citation: q.law_citation,
