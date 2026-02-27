@@ -408,6 +408,15 @@ Distribute evenly across trades: ${tradesLabel}. Jurisdiction: ${jurisdiction}. 
                         <p className="text-sm text-green-800">
                           Questions added for {results.trades?.join(', ')} ({selectedJurisdiction})
                         </p>
+                        <Link
+                          to={createPageUrl(`Study?trades=${encodeURIComponent(results.trades.join(','))}&jurisdiction=${encodeURIComponent(selectedJurisdiction)}`)}
+                          className="inline-block mt-3"
+                        >
+                          <Button className="bg-green-600 hover:bg-green-700 text-white">
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Studying These Questions
+                          </Button>
+                        </Link>
                       </div>
                     </>
                   ) : (
