@@ -382,8 +382,8 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
                 <strong>How it works:</strong> This tool uses AI with real-time legal research to generate 
-                professional exam-quality questions based on actual {selectedJurisdiction} laws and regulations 
-                for {selectedTrade || 'your selected trade'}.
+                professional exam-quality questions based on actual {selectedJurisdiction || 'your selected jurisdiction'} laws and regulations 
+                for {selectedTrades.length > 0 ? selectedTrades.join(', ') : 'your selected trades'}.
               </p>
             </div>
           </CardContent>
