@@ -225,7 +225,8 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
       
       setResults({
         success: true,
-        count: questionsToCreate.length
+        count: questionsToCreate.length,
+        trades: selectedTrades
       });
     } catch (error) {
       console.error('Error generating questions:', error);
