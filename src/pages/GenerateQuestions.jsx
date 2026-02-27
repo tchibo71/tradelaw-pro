@@ -342,7 +342,7 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
               ) : (
                 <>
                   <Sparkles className="mr-2 h-5 w-5" />
-                  Generate 5 Questions
+                  Generate {questionCount} Question{questionCount !== 1 ? 's' : ''}
                 </>
               )}
             </Button>
