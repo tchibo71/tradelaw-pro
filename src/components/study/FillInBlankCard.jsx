@@ -6,6 +6,49 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const NUMBER_WORDS = {
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5,
+  six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+  sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+  thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+  hundred: 100, thousand: 1000
+};
+
+const wordToNumber = (str) => {
+  const lower = str.trim().toLowerCase();
+  if (NUMBER_WORDS[lower] !== undefined) return String(NUMBER_WORDS[lower]);
+  return null;
+};
+
+const numberToWord = (str) => {
+  const num = Number(str.trim());
+  if (!isNaN(num) && Number.isInteger(num)) {
+    const entry = Object.entries(NUMBER_WORDS).find(([, v]) => v === num);
+    if (entry) return entry[0];
+  }
+  return null;
+};
+
+const answersMatch = (userAns, correctAns) => {
+  const u = userAns.trim().toLowerCase();
+  const c = correctAns.trim().toLowerCase();
+  if (u === c) return true;
+  // Try converting user word → number and compare
+  const uAsNum = wordToNumber(u);
+  if (uAsNum !== null && uAsNum === c) return true;
+  // Try converting correct word → number and compare
+  const cAsNum = wordToNumber(c);
+  if (cAsNum !== null && cAsNum === u) return true;
+  // Try converting user number → word and compare
+  const uAsWord = numberToWord(u);
+  if (uAsWord !== null && uAsWord === c) return true;
+  // Try converting correct number → word and compare
+  const cAsWord = numberToWord(c);
+  if (cAsWord !== null && cAsWord === u) return true;
+  return false;
+};
+
 export default function FillInBlankCard({ question, onAnswer }) {
   const [userAnswer, setUserAnswer] = useState('');
   const [showResult, setShowResult] = useState(false);
@@ -16,11 +59,11 @@ export default function FillInBlankCard({ question, onAnswer }) {
   };
 
   const handleNext = () => {
-    const isCorrect = userAnswer.trim().toLowerCase() === question.correct_answer.toLowerCase();
+    const isCorrect = answersMatch(userAnswer, question.correct_answer);
     onAnswer(userAnswer, isCorrect);
   };
 
-  const isCorrect = userAnswer.trim().toLowerCase() === question.correct_answer.toLowerCase();
+  const isCorrect = answersMatch(userAnswer, question.correct_answer);
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl border-2">
