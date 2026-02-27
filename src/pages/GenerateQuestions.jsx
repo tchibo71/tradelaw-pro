@@ -126,8 +126,9 @@ export default function GenerateQuestions() {
     setResults(null);
 
     try {
+      const tradesLabel = selectedTrades.join(', ');
       // Use AI to generate questions based on trade and jurisdiction
-      const prompt = `Generate 5 realistic professional certification exam questions for ${selectedTrade} professionals regarding ${selectedJurisdiction} laws and regulations.
+      const prompt = `Generate ${questionCount} realistic professional certification exam questions for ${tradesLabel} professionals regarding ${selectedJurisdiction} laws and regulations.
 
 CRITICAL FORMATTING RULES:
 - TRUE/FALSE questions: Must be a complete STATEMENT that can be answered true or false. Example: "In Tennessee, farriers must be licensed by the state board." NOT "Which of the following is true about..."
