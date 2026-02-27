@@ -26,16 +26,24 @@ export default function Study() {
     const currentUser = await base44.auth.me();
     setUser(currentUser);
 
-    if (!currentUser.preferred_trades || !currentUser.preferred_jurisdiction) {
+    // Check for URL params (coming from GenerateQuestions)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTrades = urlParams.get('trades') ? urlParams.get('trades').split(',') : null;
+    const urlJurisdiction = urlParams.get('jurisdiction') || null;
+
+    const studyTrades = urlTrades || currentUser.preferred_trades;
+    const studyJurisdiction = urlJurisdiction || currentUser.preferred_jurisdiction;
+
+    if (!studyTrades || !studyJurisdiction) {
       window.location.href = createPageUrl('Setup');
       return;
     }
 
-    // Fetch questions for user's preferences
+    // Fetch questions for selected trades/jurisdiction
     const allQuestions = await base44.entities.LawQuestion.list();
-    const filteredQuestions = allQuestions.filter(q => 
-      currentUser.preferred_trades.includes(q.trade) &&
-      q.jurisdiction === currentUser.preferred_jurisdiction
+    const filteredQuestions = allQuestions.filter(q =>
+      studyTrades.includes(q.trade) &&
+      q.jurisdiction === studyJurisdiction
     );
 
     // Get user's attempt history for spaced repetition
@@ -45,13 +53,13 @@ export default function Study() {
     // Sort questions based on spaced repetition
     const sortedQuestions = sortQuestionsForSpacedRepetition(filteredQuestions, attempts, reviewQueue);
     
-    setQuestions(sortedQuestions.slice(0, 10)); // 10 questions per session
+    setQuestions(sortedQuestions.slice(0, 20)); // up to 20 questions per session
 
     // Create session
     const session = await base44.entities.StudySession.create({
-      trades: currentUser.preferred_trades,
-      jurisdiction: currentUser.preferred_jurisdiction,
-      total_questions: Math.min(10, sortedQuestions.length),
+      trades: studyTrades,
+      jurisdiction: studyJurisdiction,
+      total_questions: Math.min(20, sortedQuestions.length),
       correct_answers: 0
     });
     
