@@ -267,18 +267,30 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Select Trade
+                  Select Trades (choose one or more)
                 </label>
-                <Select value={selectedTrade} onValueChange={setSelectedTrade}>
+                <Select onValueChange={addTrade}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a trade..." />
+                    <SelectValue placeholder="Add a trade..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-64">
                     {TRADES.map(trade => (
                       <SelectItem key={trade} value={trade}>{trade}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedTrades.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {selectedTrades.map(trade => (
+                      <Badge key={trade} className="bg-purple-100 text-purple-900 border border-purple-300 pl-3 pr-1 py-1 flex items-center gap-1">
+                        {trade}
+                        <button onClick={() => removeTrade(trade)} className="ml-1 hover:bg-purple-200 rounded-full p-0.5">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -296,11 +308,30 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
                   </SelectContent>
                 </Select>
               </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Number of Questions: <span className="font-bold text-purple-700">{questionCount}</span>
+                </label>
+                <Slider
+                  min={1}
+                  max={20}
+                  step={1}
+                  value={[questionCount]}
+                  onValueChange={([val]) => setQuestionCount(val)}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <span>1</span>
+                  <span>10</span>
+                  <span>20</span>
+                </div>
+              </div>
             </div>
 
             <Button
               onClick={generateQuestions}
-              disabled={!selectedTrade || !selectedJurisdiction || generating}
+              disabled={selectedTrades.length === 0 || !selectedJurisdiction || generating}
               className="w-full h-14 text-lg bg-purple-600 hover:bg-purple-700 text-gray-900"
             >
               {generating ? (
