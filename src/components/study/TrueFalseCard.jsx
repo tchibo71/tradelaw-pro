@@ -16,11 +16,11 @@ export default function TrueFalseCard({ question, onAnswer }) {
   };
 
   const handleNext = () => {
-    const isCorrect = selectedAnswer === question.correct_answer;
+    const isCorrect = selectedAnswer?.toLowerCase().trim() === question.correct_answer?.toLowerCase().trim();
     onAnswer(selectedAnswer, isCorrect);
   };
 
-  const isCorrect = selectedAnswer === question.correct_answer;
+  const isCorrect = selectedAnswer?.toLowerCase().trim() === question.correct_answer?.toLowerCase().trim();
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl border-2">
@@ -43,7 +43,7 @@ export default function TrueFalseCard({ question, onAnswer }) {
         <div className="grid grid-cols-2 gap-4">
           {['True', 'False'].map((option) => {
             const isSelected = selectedAnswer === option;
-            const isCorrectOption = option === question.correct_answer;
+            const isCorrectOption = option.toLowerCase().trim() === question.correct_answer?.toLowerCase().trim();
             
             let bgColor = 'bg-white hover:bg-gray-50';
             let borderColor = 'border-gray-200';

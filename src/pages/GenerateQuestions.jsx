@@ -168,18 +168,39 @@ Make questions professional, accurate, and exam-worthy. Ensure true/false questi
       });
 
       // Create questions in database
-      const questionsToCreate = response.questions.map(q => ({
-        question_text: q.question_text,
-        question_type: q.question_type,
-        correct_answer: q.correct_answer,
-        options: q.options || [],
-        trade: selectedTrade,
-        jurisdiction: selectedJurisdiction,
-        law_type: q.law_type,
-        law_citation: q.law_citation,
-        explanation: q.explanation,
-        difficulty: q.difficulty
-      }));
+      const questionsToCreate = response.questions.map(q => {
+        let correctAnswer = q.correct_answer?.trim();
+        const options = (q.options || []).map(o => o?.trim());
+
+        // For multiple choice: ensure correct_answer EXACTLY matches one of the options
+        if (q.question_type === 'multiple_choice' && options.length > 0) {
+          const exactMatch = options.find(opt => opt === correctAnswer);
+          if (!exactMatch) {
+            // Try case-insensitive match and use the option's exact text
+            const caseMatch = options.find(opt => opt?.toLowerCase() === correctAnswer?.toLowerCase());
+            if (caseMatch) correctAnswer = caseMatch;
+          }
+        }
+
+        // For true/false: normalize to "True" or "False"
+        if (q.question_type === 'true_false') {
+          if (correctAnswer?.toLowerCase() === 'true') correctAnswer = 'True';
+          if (correctAnswer?.toLowerCase() === 'false') correctAnswer = 'False';
+        }
+
+        return {
+          question_text: q.question_text?.trim(),
+          question_type: q.question_type,
+          correct_answer: correctAnswer,
+          options,
+          trade: selectedTrade,
+          jurisdiction: selectedJurisdiction,
+          law_type: q.law_type,
+          law_citation: q.law_citation,
+          explanation: q.explanation,
+          difficulty: q.difficulty
+        };
+      });
 
       await base44.entities.LawQuestion.bulkCreate(questionsToCreate);
       
