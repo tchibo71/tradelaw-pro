@@ -141,67 +141,73 @@ export default function GenerateQuestions() {
     setSelectedTrades(prev => prev.filter(t => t !== trade));
   };
 
+  const buildPrompt = (trades, jurisdiction, count) => {
+    const tradesLabel = trades.join(', ');
+    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals regarding ${jurisdiction} laws and regulations.
+
+CRITICAL FORMATTING RULES:
+- TRUE/FALSE questions: Must be a complete STATEMENT. Example: "In Tennessee, farriers must be licensed by the state board." NOT "Which of the following is true about..."
+- MULTIPLE CHOICE questions: 4 answer options in the options array, correct_answer must exactly match one option.
+- FILL IN BLANK questions: Use _____ to indicate the blank.
+
+For each question provide: question_text, question_type (multiple_choice|true_false|fill_in_blank), correct_answer, options (array, 4 items for MC), trade (which trade this is for), law_type (statute|regulation), law_citation, explanation (1-2 sentences), difficulty (beginner|intermediate|advanced).
+
+Distribute evenly across trades: ${tradesLabel}. Jurisdiction: ${jurisdiction}. Keep explanations SHORT (1 sentence max) to stay within JSON limits.`;
+  };
+
+  const callLLM = async (prompt) => {
+    return base44.integrations.Core.InvokeLLM({
+      prompt,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                question_text: { type: "string" },
+                question_type: { type: "string" },
+                correct_answer: { type: "string" },
+                options: { type: "array", items: { type: "string" } },
+                trade: { type: "string" },
+                law_type: { type: "string" },
+                law_citation: { type: "string" },
+                explanation: { type: "string" },
+                difficulty: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    });
+  };
+
   const generateQuestions = async () => {
     setGenerating(true);
     setResults(null);
 
     try {
-      const tradesLabel = selectedTrades.join(', ');
-      // Use AI to generate questions based on trade and jurisdiction
-      const prompt = `Generate ${questionCount} realistic professional certification exam questions for ${tradesLabel} professionals regarding ${selectedJurisdiction} laws and regulations.
+      // Split into batches of 5 to avoid JSON truncation with large requests
+      const BATCH_SIZE = 5;
+      const allQuestions = [];
+      let remaining = questionCount;
+      let batchStart = 0;
 
-CRITICAL FORMATTING RULES:
-- TRUE/FALSE questions: Must be a complete STATEMENT that can be answered true or false. Example: "In Tennessee, farriers must be licensed by the state board." NOT "Which of the following is true about..."
-- MULTIPLE CHOICE questions: Must include the complete question AND list all 4 options in the question_text. The options array should contain the same 4 choices.
-- FILL IN BLANK questions: Must have a clear blank indicated with _____ in the question.
-
-For each question, provide:
-1. Question text (properly formatted for the question type - see rules above)
-2. Question type: "multiple_choice", "true_false", or "fill_in_blank"
-3. The correct answer (exact text)
-4. For multiple choice: Array of 4 plausible answer options (one must be the correct answer)
-5. Law type: "statute" or "regulation"
-6. A realistic legal citation (e.g., "OSHA 1926.451", "TN Code § 63-13-101", "IRC 2018 Section 301.2")
-7. A detailed explanation (2-3 sentences) referencing the actual legal requirement
-8. Difficulty level: "beginner", "intermediate", or "advanced"
-
-Focus on:
-- Safety regulations (OSHA, building codes)
-- Licensing requirements
-- Professional standards  
-- Industry-specific regulations
-- State-specific requirements for ${selectedJurisdiction}
-
-Distribute questions across all selected trades: ${tradesLabel}. Make questions professional, accurate, and exam-worthy. Ensure true/false questions are STATEMENTS, not "which of the following" questions.`;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: prompt,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            questions: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  question_text: { type: "string" },
-                  question_type: { type: "string" },
-                  correct_answer: { type: "string" },
-                  options: { type: "array", items: { type: "string" } },
-                  law_type: { type: "string" },
-                  law_citation: { type: "string" },
-                  explanation: { type: "string" },
-                  difficulty: { type: "string" }
-                }
-              }
-            }
-          }
+      while (remaining > 0) {
+        const batchCount = Math.min(BATCH_SIZE, remaining);
+        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount);
+        const response = await callLLM(prompt);
+        if (response?.questions?.length > 0) {
+          allQuestions.push(...response.questions.slice(0, batchCount));
         }
-      });
+        remaining -= batchCount;
+        batchStart += batchCount;
+      }
 
       // Create questions in database
-      const questionsToCreate = response.questions.map((q, idx) => {
+      const questionsToCreate = allQuestions.map((q, idx) => {
         let correctAnswer = q.correct_answer?.trim();
         const options = (q.options || []).map(o => o?.trim());
 
