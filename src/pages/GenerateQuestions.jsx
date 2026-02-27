@@ -362,7 +362,7 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
                           Successfully generated {results.count} questions!
                         </p>
                         <p className="text-sm text-green-800">
-                          Questions have been added to the database for {selectedTrade} ({selectedJurisdiction})
+                          Questions added for {results.trades?.join(', ')} ({selectedJurisdiction})
                         </p>
                       </div>
                     </>
