@@ -152,7 +152,7 @@ Focus on:
 - Industry-specific regulations
 - State-specific requirements for ${selectedJurisdiction}
 
-Make questions professional, accurate, and exam-worthy. Ensure true/false questions are STATEMENTS, not "which of the following" questions.`;
+Distribute questions across all selected trades: ${tradesLabel}. Make questions professional, accurate, and exam-worthy. Ensure true/false questions are STATEMENTS, not "which of the following" questions.`;
 
       const response = await base44.integrations.Core.InvokeLLM({
         prompt: prompt,
