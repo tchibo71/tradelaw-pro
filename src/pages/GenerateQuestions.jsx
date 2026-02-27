@@ -285,20 +285,37 @@ Distribute questions across all selected trades: ${tradesLabel}. Make questions 
 
           <CardContent className="p-6 space-y-6">
             <div className="space-y-4">
-              <div>
+              <div ref={tradeRef}>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                   Select Trades (choose one or more)
                 </label>
-                <Select onValueChange={addTrade}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Add a trade..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64">
-                    {TRADES.map(trade => (
-                      <SelectItem key={trade} value={trade}>{trade}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Type to search trades..."
+                    value={tradeSearch}
+                    onChange={(e) => { setTradeSearch(e.target.value); setShowTradeDropdown(true); }}
+                    onFocus={() => setShowTradeDropdown(true)}
+                  />
+                  {showTradeDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                      {filteredTrades.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">No trades found</div>
+                      ) : (
+                        filteredTrades.map(trade => (
+                          <button
+                            key={trade}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-purple-50 transition-colors ${selectedTrades.includes(trade) ? 'text-purple-500 font-medium' : 'text-gray-800'}`}
+                            onMouseDown={(e) => { e.preventDefault(); addTrade(trade); }}
+                          >
+                            {trade} {selectedTrades.includes(trade) && '✓'}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
                 {selectedTrades.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {selectedTrades.map(trade => (
