@@ -161,7 +161,7 @@ export default function FillInBlankCard({ question, onAnswer }) {
       )}
 
       {showResult && (
-        <CardFooter className="pt-4">
+        <CardFooter className="pt-4 pb-16">
           <Button
             onClick={handleNext}
             className="w-full bg-navy-600 hover:bg-navy-700 text-gray-900 h-14 text-lg font-semibold"
