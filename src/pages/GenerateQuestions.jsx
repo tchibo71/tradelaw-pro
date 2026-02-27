@@ -133,6 +133,8 @@ export default function GenerateQuestions() {
     if (!selectedTrades.includes(trade)) {
       setSelectedTrades(prev => [...prev, trade]);
     }
+    setTradeSearch('');
+    setShowTradeDropdown(false);
   };
 
   const removeTrade = (trade) => {
