@@ -106,8 +106,12 @@ const STATES = [
 ];
 
 export default function GenerateQuestions() {
-  const [selectedTrades, setSelectedTrades] = useState([]);
-  const [selectedJurisdiction, setSelectedJurisdiction] = useState('');
+  const urlParams = new URLSearchParams(window.location.search);
+  const prefillTrades = urlParams.get('prefill_trades') ? urlParams.get('prefill_trades').split(',').filter(Boolean) : [];
+  const prefillJurisdiction = urlParams.get('prefill_jurisdiction') || '';
+
+  const [selectedTrades, setSelectedTrades] = useState(prefillTrades);
+  const [selectedJurisdiction, setSelectedJurisdiction] = useState(prefillJurisdiction);
   const [questionCount, setQuestionCount] = useState(5);
   const [generating, setGenerating] = useState(false);
   const [genProgress, setGenProgress] = useState({ current: 0, total: 0, stage: '' });
