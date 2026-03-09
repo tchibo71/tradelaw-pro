@@ -143,16 +143,40 @@ export default function GenerateQuestions() {
 
   const buildPrompt = (trades, jurisdiction, count) => {
     const tradesLabel = trades.join(', ');
-    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals regarding ${jurisdiction} laws and regulations.
 
-CRITICAL FORMATTING RULES:
-- TRUE/FALSE questions: Must be a complete STATEMENT. Example: "In Tennessee, farriers must be licensed by the state board." NOT "Which of the following is true about..."
-- MULTIPLE CHOICE questions: 4 answer options in the options array, correct_answer must exactly match one option.
-- FILL IN BLANK questions: Use _____ to indicate the blank.
+    // Trades that are heavily regulation-driven (more agency regs than statutes)
+    const heavyRegTrades = [
+      'septic', 'wastewater', 'well', 'environmental', 'asbestos', 'lead', 'mold',
+      'pesticide', 'water treatment', 'food', 'health', 'medical', 'funeral', 'embalmer',
+      'crematory', 'childcare', 'day care', 'nursing home', 'pharmacy', 'boiler',
+      'elevator', 'crane', 'radiation', 'air conditioning', 'refrigeration'
+    ];
 
-For each question provide: question_text, question_type (multiple_choice|true_false|fill_in_blank), correct_answer, options (array, 4 items for MC), trade (which trade this is for), law_type (statute|regulation), law_citation, explanation (1-2 sentences), difficulty (beginner|intermediate|advanced).
+    const isHeavyReg = (trade) => heavyRegTrades.some(keyword => trade.toLowerCase().includes(keyword));
 
-Distribute evenly across trades: ${tradesLabel}. Jurisdiction: ${jurisdiction}. Keep explanations SHORT (1 sentence max) to stay within JSON limits.`;
+    const tradeGuidance = trades.map(trade => {
+      const regHeavy = isHeavyReg(trade);
+      return `- ${trade}: weight ${regHeavy ? '~70% agency/department regulations, ~30% statutes' : '~50% statutes, ~50% agency/department regulations'}`;
+    }).join('\n');
+
+    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.
+
+CRITICAL: You MUST cover BOTH (1) state statutes (legislature-enacted laws) AND (2) state agency/department regulations (administrative rules). Weight the mix by trade:
+${tradeGuidance}
+
+CITATION RULES (MANDATORY):
+- For statutes: prefix law_citation with "Statute:" then cite the exact code section (e.g., "Statute: CA Business & Professions Code § 7059")
+- For regulations: prefix law_citation with "Regulation:" then cite BOTH the agency/department name AND the regulation code (e.g., "Regulation: CA State Water Resources Control Board, 23 CCR § 2650")
+- law_type field must be "statute" for statutes, "regulation" for agency/department rules
+
+QUESTION FORMATTING RULES:
+- TRUE/FALSE: Must be a complete factual STATEMENT (e.g., "In ${jurisdiction}, septic system installers must obtain approval from the Department of Health before installation.")
+- MULTIPLE CHOICE: Exactly 4 options; correct_answer must match one option exactly.
+- FILL IN BLANK: Use _____ for the blank.
+
+For each question provide: question_text, question_type (multiple_choice|true_false|fill_in_blank), correct_answer, options (4 items for MC, empty array otherwise), trade, law_type (statute|regulation), law_citation (prefixed as above), explanation (1 sentence max), difficulty (beginner|intermediate|advanced).
+
+Distribute questions evenly across trades: ${tradesLabel}. Keep explanations SHORT (1 sentence) to stay within JSON limits.`;
   };
 
   const callLLM = async (prompt) => {
