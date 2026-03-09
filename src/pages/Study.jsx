@@ -68,27 +68,32 @@ export default function Study() {
   };
 
   const sortQuestionsForSpacedRepetition = (questions, attempts, reviewQueue) => {
-    // Prioritize questions in review queue (incorrect answers)
-    const reviewQueueIds = reviewQueue.map(r => r.question_id);
-    const reviewQuestions = questions.filter(q => reviewQueueIds.includes(q.id));
+    // Deduplicate by id — each question appears exactly ONCE per session
+    const seen = new Set();
+    const unique = questions.filter(q => {
+      if (seen.has(q.id)) return false;
+      seen.add(q.id);
+      return true;
+    });
+
+    // Prioritize questions in review queue (incorrect answers from past sessions)
+    const reviewQueueIds = new Set(reviewQueue.map(r => r.question_id));
+    const reviewQuestions = unique.filter(q => reviewQueueIds.has(q.id));
     
     // Then questions never attempted
-    const attemptedIds = attempts.map(a => a.question_id);
-    const newQuestions = questions.filter(q => !attemptedIds.includes(q.id));
+    const attemptedIds = new Set(attempts.map(a => a.question_id));
+    const newQuestions = unique.filter(q => !attemptedIds.has(q.id));
     
-    // Then questions not answered recently
-    const otherQuestions = questions.filter(q => 
-      !reviewQueueIds.includes(q.id) && attemptedIds.includes(q.id)
+    // Then previously-answered questions not in review queue
+    const otherQuestions = unique.filter(q => 
+      !reviewQueueIds.has(q.id) && attemptedIds.has(q.id)
     );
 
-    // Shuffle each category
-    const shuffled = [
+    return [
       ...shuffle(reviewQuestions),
       ...shuffle(newQuestions),
       ...shuffle(otherQuestions)
     ];
-
-    return shuffled;
   };
 
   const shuffle = (array) => {
