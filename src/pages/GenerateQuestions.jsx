@@ -569,13 +569,13 @@ Keep explanations to 1 sentence maximum.`;
       advanceProgress('Researching statute vs regulation proportions...');
       const ratioMap = await fetchStatuteRegRatio(selectedTrades, selectedJurisdiction);
 
-      // Fetch existing questions for same trade(s) + jurisdiction to avoid repetition
+      // Fetch existing questions to avoid duplicate citations
       const existingQuestions = await base44.entities.LawQuestion.filter({
         jurisdiction: selectedJurisdiction
       });
-      const existingTexts = existingQuestions
+      const existingCitations = existingQuestions
         .filter(q => selectedTrades.some(t => q.trade === t))
-        .map(q => q.question_text).filter(Boolean);
+        .map(q => q.law_citation).filter(Boolean);
       
 
 
