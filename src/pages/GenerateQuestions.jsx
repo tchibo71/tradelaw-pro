@@ -588,7 +588,7 @@ Distribute questions evenly across trades: ${tradesLabel}. Keep explanations SHO
               {repairResults && (
                 <p className={`text-sm mt-2 font-medium ${repairResults.success ? 'text-green-800' : 'text-red-800'}`}>
                   {repairResults.success
-                    ? `✓ Scanned ${repairResults.total} questions, fixed ${repairResults.fixed} answer mismatches.`
+                    ? `✓ Scanned ${repairResults.total} questions — fixed ${repairResults.fixed} answer mismatches, removed ${repairResults.deleted} factually inaccurate questions.`
                     : `Error: ${repairResults.error}`}
                 </p>
               )}
