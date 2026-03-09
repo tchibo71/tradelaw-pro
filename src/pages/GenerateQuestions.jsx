@@ -676,7 +676,7 @@ Keep explanations to 1 sentence maximum.`;
               {generating ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Generating Questions...
+                  {genProgress.stage || 'Working...'}
                 </>
               ) : (
                 <>
