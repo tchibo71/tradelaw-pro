@@ -557,6 +557,7 @@ Keep explanations to 1 sentence maximum.`;
       });
     } finally {
       setGenerating(false);
+      setGenProgress({ current: 0, total: 0, stage: '' });
     }
   };
 
