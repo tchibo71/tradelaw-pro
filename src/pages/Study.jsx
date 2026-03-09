@@ -59,7 +59,7 @@ export default function Study() {
     const session = await base44.entities.StudySession.create({
       trades: studyTrades,
       jurisdiction: studyJurisdiction,
-      total_questions: Math.min(20, sortedQuestions.length),
+      total_questions: sortedQuestions.length,
       correct_answers: 0
     });
     

@@ -193,7 +193,7 @@ Return a JSON object with a "results" array, one entry per question in the same 
     setRepairResults(null);
     setRepairProgress({ current: 0, total: 0, stage: 'Loading questions...' });
     try {
-      const allQuestions = await base44.entities.LawQuestion.list();
+      const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
       let fixed = 0;
       const updates = [];
 
