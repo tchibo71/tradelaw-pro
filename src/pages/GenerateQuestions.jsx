@@ -864,6 +864,11 @@ Keep explanations to 1 sentence maximum.`;
                         <p className="text-sm text-green-800">
                           Questions added for {results.trades?.join(', ')} ({selectedJurisdiction})
                         </p>
+                        {results.filteredOut > 0 && (
+                          <p className="text-xs text-amber-700 mt-1">
+                            ⚠ {results.filteredOut} question{results.filteredOut !== 1 ? 's were' : ' was'} skipped — too similar to existing questions in your catalogue.
+                          </p>
+                        )}
                         <Link
                           to={createPageUrl(`Study?trades=${encodeURIComponent(results.trades.join(','))}&jurisdiction=${encodeURIComponent(selectedJurisdiction)}`)}
                           className="inline-block mt-3"
