@@ -799,6 +799,27 @@ Keep explanations to 1 sentence maximum.`;
               </div>
             )}
 
+            {/* Deduplicate questions */}
+            <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+              <p className="text-sm font-semibold text-blue-900 mb-2">🔍 Remove Duplicate Questions</p>
+              <p className="text-xs text-blue-800 mb-3">Scans your catalogue for questions that are too similar to each other and removes the weaker duplicates.</p>
+              <Button
+                onClick={deduplicateQuestions}
+                disabled={deduplicating}
+                variant="outline"
+                className="border-blue-400 text-blue-900 hover:bg-blue-100 w-full"
+              >
+                {deduplicating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Scanning for duplicates...</> : 'Remove Duplicate Questions'}
+              </Button>
+              {dedupeResults && (
+                <p className={`text-sm mt-2 font-medium ${dedupeResults.success ? 'text-green-800' : 'text-red-800'}`}>
+                  {dedupeResults.success
+                    ? `✓ Scanned ${dedupeResults.total} questions — removed ${dedupeResults.removed} near-duplicate${dedupeResults.removed !== 1 ? 's' : ''}.`
+                    : `Error: ${dedupeResults.error}`}
+                </p>
+              )}
+            </div>
+
             {/* Repair existing questions */}
             <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
               <p className="text-sm font-semibold text-orange-900 mb-2">🔧 Fix Existing Questions</p>
