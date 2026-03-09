@@ -446,8 +446,21 @@ Keep explanations to 1 sentence maximum.`;
   const generateQuestions = async () => {
     setGenerating(true);
     setResults(null);
+    const BATCH_SIZE = 5;
+    const totalBatches = Math.ceil(questionCount / BATCH_SIZE);
+    // +1 for ratio research, +1 for fact-check at the end
+    const totalSteps = 1 + totalBatches + 1;
+    let step = 0;
+
+    const advanceProgress = (stage) => {
+      step++;
+      setGenProgress({ current: step, total: totalSteps, stage });
+    };
 
     try {
+      advanceProgress('Researching statute vs regulation proportions...');
+      const ratioMap = await fetchStatuteRegRatio(selectedTrades, selectedJurisdiction);
+
       // Fetch existing questions to avoid repetition
       const existingQuestions = await base44.entities.LawQuestion.filter({
         jurisdiction: selectedJurisdiction
@@ -455,16 +468,15 @@ Keep explanations to 1 sentence maximum.`;
       const existingTexts = existingQuestions.map(q => q.question_text).filter(Boolean);
 
       // Split into batches of 5 to avoid JSON truncation with large requests
-      const BATCH_SIZE = 5;
       const allQuestions = [];
       let remaining = questionCount;
-      let batchStart = 0;
 
       while (remaining > 0) {
         const batchCount = Math.min(BATCH_SIZE, remaining);
+        advanceProgress(`Generating questions (batch ${Math.ceil((questionCount - remaining) / BATCH_SIZE) + 1} of ${totalBatches})...`);
         // Pass all existing + newly generated texts to avoid repeats
         const allExistingTexts = [...existingTexts, ...allQuestions.map(q => q.question_text)];
-        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingTexts);
+        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingTexts, ratioMap);
         const response = await callLLM(prompt);
         if (response?.questions?.length > 0) {
           allQuestions.push(...response.questions.slice(0, batchCount));
