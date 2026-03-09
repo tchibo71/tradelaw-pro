@@ -864,20 +864,69 @@ Keep explanations to 1 sentence maximum.`;
 
             {/* Deduplicate questions */}
             <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-              <p className="text-sm font-semibold text-blue-900 mb-2">🔍 Remove Duplicate Questions</p>
-              <p className="text-xs text-blue-800 mb-3">Scans your catalogue for questions that are too similar to each other and removes the weaker duplicates.</p>
+              <p className="text-sm font-semibold text-blue-900 mb-2">🔍 Find Duplicate Questions</p>
+              <p className="text-xs text-blue-800 mb-3">Scans your catalogue for near-identical questions and shows them to you before anything is deleted.</p>
               <Button
-                onClick={deduplicateQuestions}
+                onClick={scanForDuplicates}
                 disabled={deduplicating}
                 variant="outline"
                 className="border-blue-400 text-blue-900 hover:bg-blue-100 w-full"
               >
-                {deduplicating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Scanning for duplicates...</> : 'Remove Duplicate Questions'}
+                {deduplicating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Scanning...</> : 'Scan for Duplicates'}
               </Button>
+
+              {flaggedDupes !== null && (
+                <div className="mt-4 space-y-3">
+                  {flaggedDupes.length === 0 ? (
+                    <p className="text-sm text-green-800 font-medium">✓ No duplicates found!</p>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-blue-900">{flaggedDupes.length} near-duplicate pair{flaggedDupes.length !== 1 ? 's' : ''} found. Check which to delete:</p>
+                      <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                        {flaggedDupes.map((pair, idx) => (
+                          <div key={pair.removeQ.id} className="bg-white border border-blue-200 rounded-lg p-3 text-xs space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-blue-800">Pair #{idx + 1} — {pair.similarity}% similar</span>
+                            </div>
+                            <div className="bg-green-50 border border-green-200 rounded p-2">
+                              <span className="text-green-700 font-semibold">KEEP: </span>
+                              <span className="text-gray-800">{pair.keepQ.question_text}</span>
+                            </div>
+                            <div className={`border rounded p-2 ${dupeSelections[pair.removeQ.id] ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'}`}>
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5"
+                                  checked={!!dupeSelections[pair.removeQ.id]}
+                                  onChange={(e) => setDupeSelections(prev => ({ ...prev, [pair.removeQ.id]: e.target.checked }))}
+                                />
+                                <span>
+                                  <span className={`font-semibold ${dupeSelections[pair.removeQ.id] ? 'text-red-700' : 'text-gray-500'}`}>
+                                    {dupeSelections[pair.removeQ.id] ? 'DELETE: ' : 'KEEP: '}
+                                  </span>
+                                  <span className="text-gray-800">{pair.removeQ.question_text}</span>
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        onClick={confirmDupeDelete}
+                        disabled={deduplicating || Object.values(dupeSelections).every(v => !v)}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        {deduplicating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : `Delete ${Object.values(dupeSelections).filter(Boolean).length} Selected Question${Object.values(dupeSelections).filter(Boolean).length !== 1 ? 's' : ''}`}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+
               {dedupeResults && (
                 <p className={`text-sm mt-2 font-medium ${dedupeResults.success ? 'text-green-800' : 'text-red-800'}`}>
                   {dedupeResults.success
-                    ? `✓ Scanned ${dedupeResults.total} questions — removed ${dedupeResults.removed} near-duplicate${dedupeResults.removed !== 1 ? 's' : ''}.`
+                    ? `✓ Deleted ${dedupeResults.removed} question${dedupeResults.removed !== 1 ? 's' : ''}.`
                     : `Error: ${dedupeResults.error}`}
                 </p>
               )}
