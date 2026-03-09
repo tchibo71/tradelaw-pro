@@ -674,16 +674,18 @@ Keep explanations to 1 sentence maximum.`;
         };
       });
 
-      if (questionsToCreate.length === 0) throw new Error('No questions were generated. Please try again.');
+      if (questionsToCreate.length === 0) throw new Error('All generated questions were too similar to existing ones. Try a different focus area or broader topic.');
 
       await base44.entities.LawQuestion.bulkCreate(questionsToCreate);
-      const verifiedQuestions = questionsToCreate;
       
       queryClient.invalidateQueries(['questions']);
       
+      const totalGenerated = allQuestions.length;
+      const filteredOut = totalGenerated - questionsToCreate.length;
       setResults({
         success: true,
-        count: verifiedQuestions.length,
+        count: questionsToCreate.length,
+        filteredOut,
         trades: selectedTrades
       });
     } catch (error) {
