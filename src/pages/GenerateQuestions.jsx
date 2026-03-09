@@ -614,6 +614,16 @@ Distribute questions evenly across trades: ${tradesLabel}. Keep explanations SHO
               >
                 {repairing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Repairing...</> : 'Repair All Existing Questions'}
               </Button>
+              {repairing && repairProgress.total > 0 && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-orange-800">{repairProgress.stage}</p>
+                  <Progress value={Math.round((repairProgress.current / repairProgress.total) * 100)} className="h-2" />
+                  <p className="text-xs text-orange-600 text-right">{repairProgress.current} / {repairProgress.total}</p>
+                </div>
+              )}
+              {repairing && repairProgress.total === 0 && (
+                <p className="text-xs text-orange-800 mt-2">{repairProgress.stage}</p>
+              )}
               {repairResults && (
                 <p className={`text-sm mt-2 font-medium ${repairResults.success ? 'text-green-800' : 'text-red-800'}`}>
                   {repairResults.success
