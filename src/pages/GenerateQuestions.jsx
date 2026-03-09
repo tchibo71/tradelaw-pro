@@ -621,16 +621,14 @@ Keep explanations to 1 sentence maximum.`;
           .replace(/\s+/g, ' ')
           .trim();
 
-      // Filter out newly generated questions that are too similar to EXISTING DB questions
-      const SIMILARITY_THRESHOLD = 0.85;
+      // Filter out only true duplicates (near-identical question text)
       const deduplicatedQuestions = [];
-      const seenTexts = [...existingTexts]; // seed with existing DB texts
+      const seenTexts = [...existingTexts];
       for (const q of allQuestions) {
         if (!q.question_text) continue;
-        const tooSimilar = seenTexts.some(existing => questionSimilarity(q.question_text, existing) >= SIMILARITY_THRESHOLD);
-        if (!tooSimilar) {
+        if (!isTrueDuplicate(q.question_text, seenTexts)) {
           deduplicatedQuestions.push(q);
-          seenTexts.push(q.question_text); // also dedupe within the new batch
+          seenTexts.push(q.question_text);
         }
       }
 
