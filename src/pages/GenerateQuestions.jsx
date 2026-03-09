@@ -454,7 +454,7 @@ Return JSON only.`,
     }
   };
 
-  const buildPrompt = (trades, jurisdiction, count, existingQuestionTexts = [], ratioMap = {}, focusAreaText = '') => {
+  const buildPrompt = (trades, jurisdiction, count, existingCitations = [], ratioMap = {}, focusAreaText = '') => {
     const tradesLabel = trades.join(', ');
 
     const heavyRegTrades = [
@@ -481,12 +481,12 @@ Return JSON only.`,
       return `- ${trade}: ${splitLabel}${focusStr}`;
     }).join('\n\n');
 
-    const avoidSection = existingQuestionTexts.length > 0
-      ? `\n\nCRITICAL - DO NOT REPEAT THESE ALREADY-EXISTING QUESTIONS (you must ask about DIFFERENT facts, different code sections, different topics):\n${existingQuestionTexts.slice(0, 40).map((q, i) => `${i + 1}. ${q}`).join('\n')}\n`
+    const avoidCitationsSection = existingCitations.length > 0
+      ? `\n\nCRITICAL - DO NOT CITE THESE LAWS (each question must cite a DIFFERENT law/rule, not already in this list):\n${existingCitations.slice(0, 50).map((c, i) => `${i + 1}. ${c}`).join('\n')}\n`
       : '';
 
     const focusSection = focusAreaText?.trim()
-      ? `\n\nSPECIFIC FOCUS: The user wants questions specifically about: "${focusAreaText.trim()}"\nGenerate ALL ${count} questions on this specific topic area. Explore it in depth — different rules, different code sections, different scenarios within this topic.\n`
+      ? `\n\nSPECIFIC FOCUS: The user wants questions specifically about: "${focusAreaText.trim()}"\nGenerate ALL ${count} questions on this specific topic area. Explore it in depth — different laws, different code sections, different scenarios within this topic.\n`
       : '';
 
     return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}
