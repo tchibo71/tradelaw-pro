@@ -8,10 +8,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 const normalizeForMatch = (str) =>
   (str || '')
     .toLowerCase()
-    .replace(/[\u00a0\u2009\u202f\t]/g, ' ')
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()"']/g, '')
+    .replace(/[^a-z0-9\s]/g, '')   // strip ALL non-alphanumeric chars
     .replace(/\s+/g, ' ')
     .trim();
+
+// Two strings match if normalized equal OR one contains all words of the other
+const answersMatch = (a, b) => {
+  const na = normalizeForMatch(a);
+  const nb = normalizeForMatch(b);
+  if (na === nb) return true;
+  // fallback: word-set overlap (handles slight rephrasing)
+  const wa = new Set(na.split(' ').filter(Boolean));
+  const wb = new Set(nb.split(' ').filter(Boolean));
+  const intersection = [...wa].filter(w => wb.has(w)).length;
+  const minSize = Math.min(wa.size, wb.size);
+  return minSize > 0 && intersection / minSize >= 0.9;
+};
 
 export default function MultipleChoiceCard({ question, onAnswer }) {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
