@@ -371,12 +371,19 @@ Return JSON only.`,
     const isHeavyReg = (trade) => heavyRegTrades.some(keyword => trade.toLowerCase().includes(keyword));
 
     const tradeGuidance = trades.map(trade => {
-      const regHeavy = isHeavyReg(trade);
+      const ratio = ratioMap[trade];
+      let splitLabel;
+      if (ratio) {
+        splitLabel = `~${Math.round(ratio.regulation_pct)}% agency/department regulations, ~${Math.round(ratio.statute_pct)}% statutes (proportional to actual volume of law)`;
+      } else {
+        const regHeavy = isHeavyReg(trade);
+        splitLabel = regHeavy ? '~70% agency/department regulations, ~30% statutes' : '~50% statutes, ~50% agency/department regulations';
+      }
       const focusAreas = getRandomAreas(trade, 5);
       const focusStr = focusAreas.length > 0
-        ? `\n  FOCUS THESE ${count} QUESTIONS ON THESE SPECIFIC REGULATORY AREAS (vary widely across them):\n${focusAreas.map(a => `    • ${a}`).join('\n')}`
+        ? `\n  FOCUS ON THESE SPECIFIC REGULATORY AREAS (vary widely):\n${focusAreas.map(a => `    • ${a}`).join('\n')}`
         : '';
-      return `- ${trade}: weight ${regHeavy ? '~70% agency/department regulations, ~30% statutes' : '~50% statutes, ~50% agency/department regulations'}${focusStr}`;
+      return `- ${trade}: ${splitLabel}${focusStr}`;
     }).join('\n\n');
 
     const avoidSection = existingQuestionTexts.length > 0
