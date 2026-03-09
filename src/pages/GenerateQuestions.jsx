@@ -263,7 +263,7 @@ Return a JSON object with a "results" array, one entry per question in the same 
         }
       }
 
-      setRepairResults({ success: true, total: allQuestions.length, fixed, deleted });
+      setRepairResults({ success: true, total: allQuestions.length, fixed, deleted: deleted + embeddedDeleted });
     } catch (err) {
       setRepairResults({ success: false, error: err.message });
     } finally {
