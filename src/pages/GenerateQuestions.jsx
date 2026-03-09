@@ -185,12 +185,14 @@ Return a JSON object with a "results" array, one entry per question in the same 
   const repairExistingQuestions = async () => {
     setRepairing(true);
     setRepairResults(null);
+    setRepairProgress({ current: 0, total: 0, stage: 'Loading questions...' });
     try {
       const allQuestions = await base44.entities.LawQuestion.list();
       let fixed = 0;
       const updates = [];
 
       // Step 1: Fix answer mismatches
+      setRepairProgress({ current: 0, total: allQuestions.length, stage: 'Fixing answer mismatches...' });
       for (const q of allQuestions) {
         let newCorrect = q.correct_answer;
         let changed = false;
@@ -217,7 +219,14 @@ Return a JSON object with a "results" array, one entry per question in the same 
       // Step 2: Fact-check all questions in batches of 5
       const BATCH = 5;
       let deleted = 0;
+      const totalBatches = Math.ceil(allQuestions.length / BATCH);
       for (let i = 0; i < allQuestions.length; i += BATCH) {
+        const batchNum = Math.floor(i / BATCH) + 1;
+        setRepairProgress({
+          current: batchNum,
+          total: totalBatches,
+          stage: `Fact-checking batch ${batchNum} of ${totalBatches}...`
+        });
         const batch = allQuestions.slice(i, i + BATCH);
         const toDelete = await factCheckBatch(batch);
         for (const id of toDelete) {
@@ -231,6 +240,7 @@ Return a JSON object with a "results" array, one entry per question in the same 
       setRepairResults({ success: false, error: err.message });
     } finally {
       setRepairing(false);
+      setRepairProgress({ current: 0, total: 0, stage: '' });
     }
   };
 
