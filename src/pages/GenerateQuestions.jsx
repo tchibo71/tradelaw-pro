@@ -452,8 +452,8 @@ Keep explanations to 1 sentence maximum.`;
     setResults(null);
     const BATCH_SIZE = 5;
     const totalBatches = Math.ceil(questionCount / BATCH_SIZE);
-    // +1 for ratio research, +1 for fact-check at the end
-    const totalSteps = 1 + totalBatches + 1;
+    // +1 for ratio research
+    const totalSteps = 1 + totalBatches;
     let step = 0;
 
     const advanceProgress = (stage) => {
