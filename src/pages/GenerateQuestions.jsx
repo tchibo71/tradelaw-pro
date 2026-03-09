@@ -225,6 +225,25 @@ Return a JSON object with a "results" array, one entry per question in the same 
       }
       await Promise.all(updates);
 
+      // Step 1b: Delete questions that embed their answer in the question text
+      setRepairProgress({ current: 0, total: allQuestions.length, stage: 'Removing answer-embedded questions...' });
+      let embeddedDeleted = 0;
+      for (const q of allQuestions) {
+        if (!q.question_text || !q.correct_answer) continue;
+        const qLower = q.question_text.toLowerCase();
+        const aLower = q.correct_answer.toLowerCase().trim();
+        let bad = false;
+        if (aLower.length > 2 && qLower.includes(aLower)) bad = true;
+        if (q.question_type === 'multiple_choice') {
+          const trimmed = q.question_text.trim();
+          if (!trimmed.includes('?') && trimmed.endsWith('.')) bad = true;
+        }
+        if (bad) {
+          await base44.entities.LawQuestion.delete(q.id);
+          embeddedDeleted++;
+        }
+      }
+
       // Step 2: Fact-check all questions in batches of 5
       const BATCH = 5;
       let deleted = 0;
