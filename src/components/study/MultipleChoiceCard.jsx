@@ -40,11 +40,11 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
   };
 
   const handleNext = () => {
-    const isCorrect = normalizeForMatch(selectedAnswer) === normalizeForMatch(question.correct_answer);
+    const isCorrect = answersMatch(selectedAnswer, question.correct_answer);
     onAnswer(selectedAnswer, isCorrect);
   };
 
-  const isCorrect = normalizeForMatch(selectedAnswer) === normalizeForMatch(question.correct_answer);
+  const isCorrect = answersMatch(selectedAnswer, question.correct_answer);
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl border-2">
