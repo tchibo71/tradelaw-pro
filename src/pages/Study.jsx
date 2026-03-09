@@ -171,7 +171,6 @@ export default function Study() {
       await updateSessionMutation.mutateAsync({
         sessionId: currentSession.id,
         data: {
-          ...currentSession,
           completed: true,
           duration_minutes: Math.floor((Date.now() - startTime) / 60000)
         }
