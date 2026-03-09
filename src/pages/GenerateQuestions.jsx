@@ -686,6 +686,16 @@ Keep explanations to 1 sentence maximum.`;
               )}
             </Button>
 
+            {generating && genProgress.total > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>{genProgress.stage}</span>
+                  <span>Step {genProgress.current} of {genProgress.total}</span>
+                </div>
+                <Progress value={Math.round((genProgress.current / genProgress.total) * 100)} className="h-3" />
+              </div>
+            )}
+
             {results && (
               <div className={`p-4 rounded-lg border-2 ${
                 results.success 
