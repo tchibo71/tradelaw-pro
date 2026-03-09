@@ -636,7 +636,7 @@ Keep explanations to 1 sentence maximum.`;
         }
         return true;
       };
-      const validQuestions = allQuestions.filter(answerEmbeddedFilter);
+      const validQuestions = deduplicatedQuestions.filter(answerEmbeddedFilter);
 
       // Create questions in database
       const questionsToCreate = validQuestions.map((q, idx) => {
