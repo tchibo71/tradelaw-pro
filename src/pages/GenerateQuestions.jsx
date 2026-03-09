@@ -271,44 +271,99 @@ Return a JSON object with a "results" array, one entry per question in the same 
     setSelectedTrades(prev => prev.filter(t => t !== trade));
   };
 
-  const buildPrompt = (trades, jurisdiction, count) => {
+  const REGULATORY_AREAS = {
+    'Septic System Installer': [
+      'soil evaluation and site assessment requirements', 'setback distances from water sources, property lines, wells, and structures',
+      'system sizing calculations and design criteria', 'installation depth and cover requirements',
+      'inspection and approval process before backfilling', 'permit application and fee requirements',
+      'prohibited installation areas (flood zones, steep slopes, unsuitable soils)', 'gravity vs pressure distribution systems',
+      'installer license renewal and continuing education', 'record-keeping and as-built drawing requirements',
+      'repair and alteration permits for existing systems', 'seasonal high water table restrictions',
+      'perc test and soil morphology evaluation procedures', 'trench dimensions and aggregate specifications',
+      'pipe material and perforations specifications', 'distribution box requirements',
+      'system certification after installation', 'variance application procedures',
+      'license suspension and revocation grounds', 'apprenticeship supervision requirements'
+    ],
+    'Septic System Pumper': [
+      'pumping frequency requirements by system type and size', 'manifest and waste tracking documentation',
+      'disposal site permit requirements', 'vehicle and equipment standards',
+      'prohibited disposal locations', 'spill response and reporting requirements',
+      'license application and examination requirements', 'background check requirements',
+      'waste transport route restrictions', 'emergency pumping procedures',
+      'inspection duties during pumping', 'reporting failing systems to authorities',
+      'grease trap and commercial system pumping differences', 'record retention periods'
+    ],
+    'Septic System Designer': [
+      'soil scientist vs engineer design authority', 'site evaluation report requirements',
+      'design criteria for different soil types', 'alternative system design approval process',
+      'engineered system stamping requirements', 'design life expectancy standards',
+      'loading rate calculations', 'reserve area requirements',
+      'mound system design specifications', 'drip irrigation system design rules',
+      'nitrogen reduction system requirements', 'design submission and review timeline',
+      'design changes during installation', 'as-built certification responsibilities'
+    ],
+    'Septic System Inspector': [
+      'inspection checklist requirements', 'point-of-sale inspection requirements',
+      'inspector certification vs contractor license', 'reporting responsibilities for failing systems',
+      'access requirements for inspections', 'documentation and report format',
+      'third-party inspector qualifications', 'conflict of interest restrictions',
+      'follow-up inspection requirements after repairs', 'inspection frequency for commercial systems'
+    ],
+  };
+
+  const getRandomAreas = (trade, count) => {
+    const areas = REGULATORY_AREAS[trade];
+    if (!areas) return [];
+    const shuffled = [...areas].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(count, areas.length));
+  };
+
+  const buildPrompt = (trades, jurisdiction, count, existingQuestionTexts = []) => {
     const tradesLabel = trades.join(', ');
 
-    // Trades that are heavily regulation-driven (more agency regs than statutes)
     const heavyRegTrades = [
       'septic', 'wastewater', 'well', 'environmental', 'asbestos', 'lead', 'mold',
       'pesticide', 'water treatment', 'food', 'health', 'medical', 'funeral', 'embalmer',
       'crematory', 'childcare', 'day care', 'nursing home', 'pharmacy', 'boiler',
       'elevator', 'crane', 'radiation', 'air conditioning', 'refrigeration'
     ];
-
     const isHeavyReg = (trade) => heavyRegTrades.some(keyword => trade.toLowerCase().includes(keyword));
 
     const tradeGuidance = trades.map(trade => {
       const regHeavy = isHeavyReg(trade);
-      return `- ${trade}: weight ${regHeavy ? '~70% agency/department regulations, ~30% statutes' : '~50% statutes, ~50% agency/department regulations'}`;
-    }).join('\n');
+      const focusAreas = getRandomAreas(trade, 5);
+      const focusStr = focusAreas.length > 0
+        ? `\n  FOCUS THESE ${count} QUESTIONS ON THESE SPECIFIC REGULATORY AREAS (vary widely across them):\n${focusAreas.map(a => `    • ${a}`).join('\n')}`
+        : '';
+      return `- ${trade}: weight ${regHeavy ? '~70% agency/department regulations, ~30% statutes' : '~50% statutes, ~50% agency/department regulations'}${focusStr}`;
+    }).join('\n\n');
+
+    const avoidSection = existingQuestionTexts.length > 0
+      ? `\n\nCRITICAL - DO NOT REPEAT THESE ALREADY-EXISTING QUESTIONS (you must ask about DIFFERENT facts, different code sections, different topics):\n${existingQuestionTexts.slice(0, 40).map((q, i) => `${i + 1}. ${q}`).join('\n')}\n`
+      : '';
 
     return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.
 
-CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it. If unsure about a specific number or requirement, ask a general conceptual question instead.
+CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it.
 
-CRITICAL: You MUST cover BOTH (1) state statutes (legislature-enacted laws) AND (2) state agency/department regulations (administrative rules). Weight the mix by trade:
+VARIETY IS MANDATORY: Each question must test a DIFFERENT specific code section, rule, or regulatory topic. Do NOT ask the same concept twice in different wording. Explore the full breadth of ${jurisdiction} law for these trades — there are dozens of chapters of statutes and hundreds of regulatory rules to draw from.${avoidSection}
+
+COVERAGE REQUIREMENTS — cover BOTH statutes AND regulations, with this trade-specific weighting:
 ${tradeGuidance}
 
 CITATION RULES (MANDATORY):
-- For statutes: prefix law_citation with "Statute:" then cite the exact code section (e.g., "Statute: CA Business & Professions Code § 7059")
-- For regulations: prefix law_citation with "Regulation:" then cite BOTH the agency/department name AND the regulation code (e.g., "Regulation: CA State Water Resources Control Board, 23 CCR § 2650")
-- law_type field must be "statute" for statutes, "regulation" for agency/department rules
+- For statutes: prefix with "Statute:" and cite the exact code section (e.g., "Statute: TN Code § 68-221-409")
+- For regulations: prefix with "Regulation:" and cite the agency name AND rule number (e.g., "Regulation: TN Dept. of Environment & Conservation, Rule 0400-48-01-.05")
+- law_type field: "statute" for statutes, "regulation" for regulations
 
-QUESTION FORMATTING RULES:
-- TRUE/FALSE: Must be a complete factual STATEMENT (e.g., "In ${jurisdiction}, septic system installers must obtain approval from the Department of Health before installation.")
-- MULTIPLE CHOICE: Exactly 4 options; correct_answer must match one option exactly.
-- FILL IN BLANK: Use _____ for the blank.
+QUESTION FORMATTING:
+- TRUE/FALSE: A complete factual statement about a specific, non-obvious rule
+- MULTIPLE CHOICE: Exactly 4 options; correct_answer must match one option EXACTLY (word for word)
+- FILL IN BLANK: Use _____ for the blank; answer should be a specific fact (number, term, name)
 
-For each question provide: question_text, question_type (multiple_choice|true_false|fill_in_blank), correct_answer, options (4 items for MC, empty array otherwise), trade, law_type (statute|regulation), law_citation (prefixed as above), explanation (1 sentence max), difficulty (beginner|intermediate|advanced).
+For each question: question_text, question_type (multiple_choice|true_false|fill_in_blank), correct_answer, options (4 for MC, [] otherwise), trade, law_type, law_citation, explanation (1 sentence), difficulty (beginner|intermediate|advanced).
 
-Distribute questions evenly across trades: ${tradesLabel}. Keep explanations SHORT (1 sentence) to stay within JSON limits.`;
+Keep explanations to 1 sentence maximum.`;
   };
 
   const callLLM = async (prompt) => {
