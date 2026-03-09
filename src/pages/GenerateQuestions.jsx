@@ -444,7 +444,11 @@ Return JSON only.`,
       ? `\n\nCRITICAL - DO NOT REPEAT THESE ALREADY-EXISTING QUESTIONS (you must ask about DIFFERENT facts, different code sections, different topics):\n${existingQuestionTexts.slice(0, 40).map((q, i) => `${i + 1}. ${q}`).join('\n')}\n`
       : '';
 
-    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.
+    const focusSection = focusAreaText?.trim()
+      ? `\n\nSPECIFIC FOCUS: The user wants questions specifically about: "${focusAreaText.trim()}"\nGenerate ALL ${count} questions on this specific topic area. Explore it in depth — different rules, different code sections, different scenarios within this topic.\n`
+      : '';
+
+    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}
 
 CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it.
 
