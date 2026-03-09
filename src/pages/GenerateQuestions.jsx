@@ -700,6 +700,18 @@ Keep explanations to 1 sentence maximum.`;
 
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Focus Area <span className="text-gray-400 font-normal">(optional — narrows topic)</span>
+                </label>
+                <Input
+                  placeholder="e.g. perc tests and soil absorption, well setback distances, pump installation requirements..."
+                  value={focusArea}
+                  onChange={(e) => setFocusArea(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">Leave blank for broad coverage, or describe a specific topic to drill deep on it.</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
                   Number of Questions: <span className="font-bold text-purple-700">{questionCount}</span>
                 </label>
                 <Slider
