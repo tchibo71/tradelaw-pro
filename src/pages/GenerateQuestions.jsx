@@ -486,7 +486,6 @@ Keep explanations to 1 sentence maximum.`;
           allQuestions.push(...response.questions.slice(0, batchCount));
         }
         remaining -= batchCount;
-        batchStart += batchCount;
       }
 
       // Aggressively normalize a string for comparison: lowercase, collapse whitespace, strip punctuation
