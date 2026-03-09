@@ -114,6 +114,7 @@ export default function GenerateQuestions() {
   const [showTradeDropdown, setShowTradeDropdown] = useState(false);
   const [repairing, setRepairing] = useState(false);
   const [repairResults, setRepairResults] = useState(null);
+  const [repairProgress, setRepairProgress] = useState({ current: 0, total: 0, stage: '' });
   const tradeRef = useRef(null);
   const queryClient = useQueryClient();
 
