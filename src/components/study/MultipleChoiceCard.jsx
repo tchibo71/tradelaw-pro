@@ -5,6 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const normalizeForMatch = (str) =>
+  (str || '')
+    .toLowerCase()
+    .replace(/[\u00a0\u2009\u202f\t]/g, ' ')
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()"']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 export default function MultipleChoiceCard({ question, onAnswer }) {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [showResult, setShowResult] = useState(false);
