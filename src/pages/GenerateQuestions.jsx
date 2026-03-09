@@ -573,30 +573,26 @@ Keep explanations to 1 sentence maximum.`;
         .filter(q => selectedTrades.some(t => q.trade === t))
         .map(q => q.question_text).filter(Boolean);
       
-      // Helper: compute word-overlap similarity ignoring common/domain words
-      // Only flags questions that are genuinely asking the same specific thing
-      const STOP_WORDS = new Set([
-        'what','which','when','where','who','how','does','must','should','can','will','shall','may',
-        'the','and','for','that','this','with','from','into','under','upon','about','before','after',
-        'required','requirement','requires','minimum','maximum','least','most','following','applicable',
-        'true','false','correct','incorrect','statement','according','regulations','regulation',
-        'statute','statutes','state','code','section','rule','rules','chapter','part','license',
-        'licensed','licensing','contractor','installer','system','septic','tank','tennessee',
-        'federal','county','local','permit','permits','permitted','approval','approved',
-        ...selectedTrades.flatMap(t => t.toLowerCase().split(' ')),
-        selectedJurisdiction.toLowerCase(),
-        ...(focusArea ? focusArea.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3) : [])
-      ]);
-      const questionSimilarity = (a, b) => {
-        const words = (str) => new Set(
-          str.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/)
-            .filter(w => w.length > 4 && !STOP_WORDS.has(w))
-        );
-        const aW = words(a), bW = words(b);
-        if (aW.size === 0 || bW.size === 0) return 0;
-        const intersection = [...aW].filter(w => bW.has(w)).length;
-        const union = new Set([...aW, ...bW]).size;
-        return union > 0 ? intersection / union : 0;
+      // Simple near-exact duplicate check: only block if question text is almost identical
+      // (The LLM prompt already instructs it to avoid existing questions — we just catch the rare true duplicate)
+      const normalizeQ = (str) =>
+        (str || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const isTrueDuplicate = (newQ, existingList) => {
+        const nNew = normalizeQ(newQ);
+        return existingList.some(ex => {
+          const nEx = normalizeQ(ex);
+          if (nNew.length === 0 || nEx.length === 0) return false;
+          // Block only if 95%+ character overlap (essentially identical)
+          const longer = Math.max(nNew.length, nEx.length);
+          let matches = 0;
+          const shorter = nNew.length <= nEx.length ? nNew : nEx;
+          const longerStr = nNew.length > nEx.length ? nNew : nEx;
+          for (let i = 0; i < shorter.length; i++) {
+            if (longerStr.includes(shorter[i])) matches++;
+          }
+          // Simpler: just check if one contains the other (substring = definite duplicate)
+          return nEx.includes(nNew) || nNew.includes(nEx) || (nNew === nEx);
+        });
       };
 
       // Split into batches of 5 to avoid JSON truncation with large requests
