@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Loader2, Sparkles, CheckCircle, XCircle, X, Search, Play } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 
