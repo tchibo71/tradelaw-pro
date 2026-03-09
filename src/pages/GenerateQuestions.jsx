@@ -230,18 +230,24 @@ Distribute questions evenly across trades: ${tradesLabel}. Keep explanations SHO
         batchStart += batchCount;
       }
 
+      // Aggressively normalize a string for comparison: lowercase, collapse whitespace, strip punctuation
+      const normalizeForMatch = (str) =>
+        (str || '')
+          .toLowerCase()
+          .replace(/[\u00a0\u2009\u202f\t]/g, ' ') // replace non-breaking & special spaces
+          .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()"']/g, '') // strip punctuation
+          .replace(/\s+/g, ' ')
+          .trim();
+
       // Create questions in database
       const questionsToCreate = allQuestions.map((q, idx) => {
         let correctAnswer = q.correct_answer?.trim();
         const options = (q.options || []).map(o => o?.trim());
 
-        // For multiple choice: ensure correct_answer EXACTLY matches one of the options
+        // For multiple choice: force correct_answer to be the EXACT option text using aggressive normalization
         if (q.question_type === 'multiple_choice' && options.length > 0) {
-          const exactMatch = options.find(opt => opt === correctAnswer);
-          if (!exactMatch) {
-            const caseMatch = options.find(opt => opt?.toLowerCase() === correctAnswer?.toLowerCase());
-            if (caseMatch) correctAnswer = caseMatch;
-          }
+          const match = options.find(opt => normalizeForMatch(opt) === normalizeForMatch(correctAnswer));
+          if (match) correctAnswer = match; // store the exact option string
         }
 
         // For true/false: normalize to "True" or "False"
