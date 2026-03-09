@@ -30,22 +30,31 @@ const numberToWord = (str) => {
   return null;
 };
 
+// Strip trailing units (days, feet, ft, inches, etc.) to get the core value
+const stripUnits = (str) => str.trim().toLowerCase().replace(/\s*(days?|feet|foot|ft|inches?|in|meters?|m|hours?|hrs?|weeks?|months?|years?|gallons?|gal|pounds?|lbs?|percent|%)\s*$/i, '').trim();
+
 const answersMatch = (userAns, correctAns) => {
   const u = userAns.trim().toLowerCase();
   const c = correctAns.trim().toLowerCase();
   if (u === c) return true;
+
+  // Strip units and compare cores
+  const uCore = stripUnits(u);
+  const cCore = stripUnits(c);
+  if (uCore === cCore) return true;
+
   // Try converting user word → number and compare
-  const uAsNum = wordToNumber(u);
-  if (uAsNum !== null && uAsNum === c) return true;
+  const uAsNum = wordToNumber(uCore);
+  if (uAsNum !== null && (uAsNum === cCore || uAsNum === c)) return true;
   // Try converting correct word → number and compare
-  const cAsNum = wordToNumber(c);
-  if (cAsNum !== null && cAsNum === u) return true;
+  const cAsNum = wordToNumber(cCore);
+  if (cAsNum !== null && (cAsNum === uCore || cAsNum === u)) return true;
   // Try converting user number → word and compare
-  const uAsWord = numberToWord(u);
-  if (uAsWord !== null && uAsWord === c) return true;
+  const uAsWord = numberToWord(uCore);
+  if (uAsWord !== null && (uAsWord === cCore || uAsWord === c)) return true;
   // Try converting correct number → word and compare
-  const cAsWord = numberToWord(c);
-  if (cAsWord !== null && cAsWord === u) return true;
+  const cAsWord = numberToWord(cCore);
+  if (cAsWord !== null && (cAsWord === uCore || cAsWord === u)) return true;
   return false;
 };
 
