@@ -401,7 +401,7 @@ Distribute questions evenly across trades: ${tradesLabel}. Keep explanations SHO
       
       setResults({
         success: true,
-        count: questionsToCreate.length,
+        count: verifiedQuestions.length,
         trades: selectedTrades
       });
     } catch (error) {
