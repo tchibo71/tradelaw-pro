@@ -625,7 +625,7 @@ Keep explanations to 1 sentence maximum.`;
           .trim();
 
       // Filter out newly generated questions that are too similar to EXISTING DB questions
-      const SIMILARITY_THRESHOLD = 0.70;
+      const SIMILARITY_THRESHOLD = 0.85;
       const deduplicatedQuestions = [];
       const seenTexts = [...existingTexts]; // seed with existing DB texts
       for (const q of allQuestions) {
