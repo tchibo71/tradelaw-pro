@@ -184,12 +184,20 @@ export default function Dashboard() {
           <CardHeader className="bg-gradient-to-r from-navy-100 to-indigo-100">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl text-navy-900">Recent Activity</CardTitle>
-              <Link to={createPageUrl('History')}>
-                <Button variant="ghost" size="sm" className="text-navy-900 hover:bg-navy-200">
-                  <History className="h-4 w-4 mr-2" />
-                  View All
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link to={createPageUrl(`GenerateQuestions?prefill_trades=${encodeURIComponent((user.preferred_trades || []).join(','))}&prefill_jurisdiction=${encodeURIComponent(user.preferred_jurisdiction || '')}`)}>
+                  <Button variant="ghost" size="sm" className="text-purple-700 hover:bg-purple-100">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate More
+                  </Button>
+                </Link>
+                <Link to={createPageUrl('History')}>
+                  <Button variant="ghost" size="sm" className="text-navy-900 hover:bg-navy-200">
+                    <History className="h-4 w-4 mr-2" />
+                    View All
+                  </Button>
+                </Link>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-6">
