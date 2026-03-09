@@ -573,14 +573,7 @@ Keep explanations to 1 sentence maximum.`;
         .filter(q => selectedTrades.some(t => q.trade === t))
         .map(q => q.question_text).filter(Boolean);
       
-      // Only block exact duplicates — the LLM prompt already handles avoiding similar questions
-      const normalizeQ = (str) =>
-        (str || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
-      const isTrueDuplicate = (newQ, existingList) => {
-        const nNew = normalizeQ(newQ);
-        if (nNew.length === 0) return false;
-        return existingList.some(ex => normalizeQ(ex) === nNew);
-      };
+
 
       // Split into batches of 5 to avoid JSON truncation with large requests
       const allQuestions = [];
