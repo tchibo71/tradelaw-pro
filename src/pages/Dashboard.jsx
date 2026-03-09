@@ -239,7 +239,7 @@ export default function Dashboard() {
                           {session.correct_answers}/{session.total_questions}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {Math.round((session.correct_answers / session.total_questions) * 100)}% correct
+                          {session.total_questions > 0 ? Math.round((session.correct_answers / session.total_questions) * 100) : 0}% correct
                         </p>
                       </div>
                       <Button
