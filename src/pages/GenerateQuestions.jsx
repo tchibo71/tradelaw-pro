@@ -493,7 +493,11 @@ Return JSON only.`,
 
 CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it.
 
-VARIETY IS MANDATORY: Each question must test a DIFFERENT specific code section, rule, or regulatory topic. Do NOT ask the same concept twice in different wording. Explore the full breadth of ${jurisdiction} law for these trades — there are dozens of chapters of statutes and hundreds of regulatory rules to draw from.${avoidSection}
+CRITICAL VARIETY REQUIREMENT - EACH QUESTION MUST CITE A DIFFERENT LAW:
+- Every question MUST cite a UNIQUE law/regulation (no two questions can cite the same section).
+- Do NOT reuse any law citations from the blocked list below.
+- Explore the FULL BREADTH of ${jurisdiction} law — there are dozens of chapters and hundreds of sections to draw from.
+- Different laws = different facts, different rules, different code sections. NO exceptions.${avoidCitationsSection}
 
 COVERAGE REQUIREMENTS — cover BOTH statutes AND regulations, with this trade-specific weighting:
 ${tradeGuidance}
