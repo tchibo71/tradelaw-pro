@@ -116,8 +116,11 @@ export default function GenerateQuestions() {
   const [generating, setGenerating] = useState(false);
   const [genProgress, setGenProgress] = useState({ current: 0, total: 0, stage: '' });
   const [results, setResults] = useState(null);
+  const [focusArea, setFocusArea] = useState('');
   const [tradeSearch, setTradeSearch] = useState('');
   const [showTradeDropdown, setShowTradeDropdown] = useState(false);
+  const [deduplicating, setDeduplicating] = useState(false);
+  const [dedupeResults, setDedupeResults] = useState(null);
   const [repairing, setRepairing] = useState(false);
   const [repairResults, setRepairResults] = useState(null);
   const [repairProgress, setRepairProgress] = useState({ current: 0, total: 0, stage: '' });
