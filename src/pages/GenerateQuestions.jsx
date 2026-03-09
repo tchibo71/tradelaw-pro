@@ -534,7 +534,7 @@ Keep explanations to 1 sentence maximum.`;
         advanceProgress(`Generating questions (batch ${Math.ceil((questionCount - remaining) / BATCH_SIZE) + 1} of ${totalBatches})...`);
         // Pass all existing + newly generated texts to avoid repeats
         const allExistingTexts = [...existingTexts, ...allQuestions.map(q => q.question_text)];
-        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingTexts, ratioMap);
+        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingTexts, ratioMap, focusArea);
         const response = await callLLM(prompt);
         if (response?.questions?.length > 0) {
           allQuestions.push(...response.questions.slice(0, batchCount));
