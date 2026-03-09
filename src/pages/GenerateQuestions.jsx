@@ -112,8 +112,60 @@ export default function GenerateQuestions() {
   const [results, setResults] = useState(null);
   const [tradeSearch, setTradeSearch] = useState('');
   const [showTradeDropdown, setShowTradeDropdown] = useState(false);
+  const [repairing, setRepairing] = useState(false);
+  const [repairResults, setRepairResults] = useState(null);
   const tradeRef = useRef(null);
   const queryClient = useQueryClient();
+
+  const normalizeForMatch = (str) =>
+    (str || '')
+      .toLowerCase()
+      .replace(/[\u00a0\u2009\u202f\t]/g, ' ')
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()"']/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const repairExistingQuestions = async () => {
+    setRepairing(true);
+    setRepairResults(null);
+    try {
+      const allQuestions = await base44.entities.LawQuestion.list();
+      let fixed = 0;
+      const updates = [];
+
+      for (const q of allQuestions) {
+        let newCorrect = q.correct_answer;
+        let changed = false;
+
+        if (q.question_type === 'multiple_choice' && q.options?.length > 0) {
+          const options = q.options.map(o => o?.trim());
+          const match = options.find(opt => normalizeForMatch(opt) === normalizeForMatch(q.correct_answer));
+          if (match && match !== q.correct_answer) {
+            newCorrect = match;
+            changed = true;
+          }
+        }
+
+        if (q.question_type === 'true_false') {
+          const lower = q.correct_answer?.toLowerCase().trim();
+          if (lower === 'true' && q.correct_answer !== 'True') { newCorrect = 'True'; changed = true; }
+          if (lower === 'false' && q.correct_answer !== 'False') { newCorrect = 'False'; changed = true; }
+        }
+
+        if (changed) {
+          updates.push(base44.entities.LawQuestion.update(q.id, { correct_answer: newCorrect }));
+          fixed++;
+        }
+      }
+
+      await Promise.all(updates);
+      setRepairResults({ success: true, total: allQuestions.length, fixed });
+    } catch (err) {
+      setRepairResults({ success: false, error: err.message });
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   const filteredTrades = TRADES.filter(t =>
     t.toLowerCase().includes(tradeSearch.toLowerCase())
