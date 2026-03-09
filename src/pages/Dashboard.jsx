@@ -231,13 +231,26 @@ export default function Dashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-navy-900">
-                        {session.correct_answers}/{session.total_questions}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {Math.round((session.correct_answers / session.total_questions) * 100)}% correct
-                      </p>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-navy-900">
+                          {session.correct_answers}/{session.total_questions}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {Math.round((session.correct_answers / session.total_questions) * 100)}% correct
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-gray-400 hover:text-red-500"
+                        onClick={async () => {
+                          await base44.entities.StudySession.delete(session.id);
+                          queryClient.invalidateQueries({ queryKey: ['sessions'] });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
