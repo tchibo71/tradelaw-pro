@@ -279,6 +279,8 @@ Return a JSON object with a "results" array, one entry per question in the same 
 
     return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.
 
+CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it. If unsure about a specific number or requirement, ask a general conceptual question instead.
+
 CRITICAL: You MUST cover BOTH (1) state statutes (legislature-enacted laws) AND (2) state agency/department regulations (administrative rules). Weight the mix by trade:
 ${tradeGuidance}
 
