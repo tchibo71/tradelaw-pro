@@ -366,7 +366,54 @@ Return JSON only.`,
     return map;
   };
 
-  const buildPrompt = (trades, jurisdiction, count, existingQuestionTexts = [], ratioMap = {}) => {
+  const deduplicateQuestions = async () => {
+    setDeduplicating(true);
+    setDedupeResults(null);
+    try {
+      const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
+      // Group by trade+jurisdiction
+      const groups = {};
+      for (const q of allQuestions) {
+        const key = `${q.trade}||${q.jurisdiction}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(q);
+      }
+
+      const toDelete = new Set();
+      for (const group of Object.values(groups)) {
+        if (group.length < 2) continue;
+        // For each pair, check if question texts are highly similar
+        for (let i = 0; i < group.length; i++) {
+          if (toDelete.has(group[i].id)) continue;
+          const aWords = new Set(group[i].question_text.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3));
+          for (let j = i + 1; j < group.length; j++) {
+            if (toDelete.has(group[j].id)) continue;
+            const bWords = new Set(group[j].question_text.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3));
+            const intersection = [...aWords].filter(w => bWords.has(w)).length;
+            const union = new Set([...aWords, ...bWords]).size;
+            const similarity = union > 0 ? intersection / union : 0;
+            if (similarity > 0.75) {
+              // Keep the one with a longer explanation; delete the other
+              if ((group[i].explanation?.length || 0) >= (group[j].explanation?.length || 0)) {
+                toDelete.add(group[j].id);
+              } else {
+                toDelete.add(group[i].id);
+              }
+            }
+          }
+        }
+      }
+
+      await Promise.all([...toDelete].map(id => base44.entities.LawQuestion.delete(id)));
+      setDedupeResults({ success: true, removed: toDelete.size, total: allQuestions.length });
+    } catch (err) {
+      setDedupeResults({ success: false, error: err.message });
+    } finally {
+      setDeduplicating(false);
+    }
+  };
+
+  const buildPrompt = (trades, jurisdiction, count, existingQuestionTexts = [], ratioMap = {}, focusAreaText = '') => {
     const tradesLabel = trades.join(', ');
 
     const heavyRegTrades = [
