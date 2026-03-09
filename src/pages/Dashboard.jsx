@@ -89,12 +89,6 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Link to={createPageUrl(`GenerateQuestions?prefill_trades=${encodeURIComponent((user.preferred_trades || []).join(','))}&prefill_jurisdiction=${encodeURIComponent(user.preferred_jurisdiction || '')}`)}>
-                <Button variant="outline" size="sm" className="bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate More Questions
-                </Button>
-              </Link>
               <Link to={createPageUrl('Setup')}>
                 <Button variant="outline" size="sm">
                   <Settings className="h-4 w-4 mr-2" />
