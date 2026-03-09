@@ -319,7 +319,47 @@ Return a JSON object with a "results" array, one entry per question in the same 
     return shuffled.slice(0, Math.min(count, areas.length));
   };
 
-  const buildPrompt = (trades, jurisdiction, count, existingQuestionTexts = []) => {
+  // Ask LLM to research the actual ratio of statute pages vs regulation pages for these trades/jurisdiction
+  const fetchStatuteRegRatio = async (trades, jurisdiction) => {
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `For the following trades in ${jurisdiction}, research and estimate the approximate number of pages (or sections) of:
+1. State statutes (legislature-enacted laws, e.g. state code chapters)
+2. State agency/department regulations (administrative rules, e.g. departmental rule chapters)
+
+Trades: ${trades.join(', ')}
+
+For each trade, return an estimated percentage of questions that should come from REGULATIONS vs STATUTES, based on the actual volume and density of regulatory material compared to statutory material. If regulations are much more voluminous (e.g. 30 pages of rules vs 2 pages of statutes), the question split should roughly reflect that volume ratio (e.g. 94% regulations, 6% statutes). The goal is proportional coverage so students are tested on the law roughly in proportion to how much law exists.
+
+Return JSON only.`,
+      add_context_from_internet: true,
+      model: "gemini_3_flash",
+      response_json_schema: {
+        type: "object",
+        properties: {
+          trades: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                trade: { type: "string" },
+                regulation_pct: { type: "number" },
+                statute_pct: { type: "number" },
+                rationale: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    });
+    // Build a lookup map: trade name -> { regulation_pct, statute_pct }
+    const map = {};
+    for (const t of (result?.trades || [])) {
+      map[t.trade] = { regulation_pct: t.regulation_pct, statute_pct: t.statute_pct };
+    }
+    return map;
+  };
+
+  const buildPrompt = (trades, jurisdiction, count, existingQuestionTexts = [], ratioMap = {}) => {
     const tradesLabel = trades.join(', ');
 
     const heavyRegTrades = [
