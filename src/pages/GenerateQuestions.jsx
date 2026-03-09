@@ -110,6 +110,7 @@ export default function GenerateQuestions() {
   const [selectedJurisdiction, setSelectedJurisdiction] = useState('');
   const [questionCount, setQuestionCount] = useState(5);
   const [generating, setGenerating] = useState(false);
+  const [genProgress, setGenProgress] = useState({ current: 0, total: 0, stage: '' });
   const [results, setResults] = useState(null);
   const [tradeSearch, setTradeSearch] = useState('');
   const [showTradeDropdown, setShowTradeDropdown] = useState(false);
