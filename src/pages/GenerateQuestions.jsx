@@ -565,11 +565,22 @@ Keep explanations to 1 sentence maximum.`;
       advanceProgress('Researching statute vs regulation proportions...');
       const ratioMap = await fetchStatuteRegRatio(selectedTrades, selectedJurisdiction);
 
-      // Fetch existing questions to avoid repetition
+      // Fetch existing questions for same trade(s) + jurisdiction to avoid repetition
       const existingQuestions = await base44.entities.LawQuestion.filter({
         jurisdiction: selectedJurisdiction
       });
-      const existingTexts = existingQuestions.map(q => q.question_text).filter(Boolean);
+      const existingTexts = existingQuestions
+        .filter(q => selectedTrades.some(t => q.trade === t))
+        .map(q => q.question_text).filter(Boolean);
+      
+      // Helper: compute word-overlap similarity between two question texts
+      const questionSimilarity = (a, b) => {
+        const words = (str) => new Set(str.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3));
+        const aW = words(a), bW = words(b);
+        const intersection = [...aW].filter(w => bW.has(w)).length;
+        const union = new Set([...aW, ...bW]).size;
+        return union > 0 ? intersection / union : 0;
+      };
 
       // Split into batches of 5 to avoid JSON truncation with large requests
       const allQuestions = [];
