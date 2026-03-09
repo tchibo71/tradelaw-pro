@@ -467,6 +467,11 @@ QUESTION FORMATTING:
 - MULTIPLE CHOICE: Exactly 4 options; correct_answer must match one option EXACTLY (word for word)
 - FILL IN BLANK: Use _____ for the blank; answer should be a specific fact (number, term, name)
 
+CRITICAL — NEVER EMBED THE ANSWER IN THE QUESTION TEXT:
+- For MULTIPLE CHOICE: The question must ASK something — it must NOT state the answer. WRONG: "The minimum setback is 10 feet. What is the minimum setback?" or "The minimum setback distance is 10 feet." RIGHT: "What is the minimum required setback distance between a septic tank and a property line?"
+- For FILL IN BLANK: The blank _____ must replace the answer. The surrounding text must NOT reveal or restate what the answer is.
+- A question where the correct answer text already appears verbatim in the question text is INVALID and must not be generated.
+
 For each question: question_text, question_type (multiple_choice|true_false|fill_in_blank), correct_answer, options (4 for MC, [] otherwise), trade, law_type, law_citation, explanation (1 sentence), difficulty (beginner|intermediate|advanced).
 
 Keep explanations to 1 sentence maximum.`;
