@@ -533,6 +533,7 @@ Keep explanations to 1 sentence maximum.`;
       if (questionsToCreate.length === 0) throw new Error('No questions were generated. Please try again.');
 
       // Fact-check before saving — attach temp index as id for matching
+      advanceProgress('Fact-checking generated questions...');
       const tempBatch = questionsToCreate.map((q, i) => ({ ...q, id: `temp_${i}` }));
       const badIds = await factCheckBatch(tempBatch);
       const badIndexes = new Set(badIds.map(id => parseInt(id.replace('temp_', ''))));
