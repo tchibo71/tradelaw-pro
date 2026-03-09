@@ -121,6 +121,8 @@ export default function GenerateQuestions() {
   const [showTradeDropdown, setShowTradeDropdown] = useState(false);
   const [deduplicating, setDeduplicating] = useState(false);
   const [dedupeResults, setDedupeResults] = useState(null);
+  const [flaggedDupes, setFlaggedDupes] = useState(null); // [{keepQ, removeQ, similarity}]
+  const [dupeSelections, setDupeSelections] = useState({}); // removeQ.id -> boolean (true = delete)
   const [repairing, setRepairing] = useState(false);
   const [repairResults, setRepairResults] = useState(null);
   const [repairProgress, setRepairProgress] = useState({ current: 0, total: 0, stage: '' });
