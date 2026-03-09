@@ -125,6 +125,55 @@ export default function GenerateQuestions() {
       .replace(/\s+/g, ' ')
       .trim();
 
+  // Fact-check a batch of questions using live internet research. Returns array of ids to delete.
+  const factCheckBatch = async (batch) => {
+    const payload = batch.map((q, i) => ({
+      index: i,
+      id: q.id,
+      trade: q.trade,
+      jurisdiction: q.jurisdiction,
+      question_text: q.question_text,
+      question_type: q.question_type,
+      correct_answer: q.correct_answer,
+      options: q.options || [],
+      law_citation: q.law_citation || ''
+    }));
+
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `You are a professional licensing law expert. For each question below, verify whether the stated correct_answer is actually accurate based on REAL current laws and regulations for that trade and jurisdiction. Use your knowledge and internet search to verify. Mark a question as INACCURATE if the correct_answer is factually wrong (e.g., wrong hour requirements, wrong fees, wrong license tiers, wrong agency names, etc.). Be strict - if something is genuinely incorrect, flag it.
+
+Questions to verify:
+${JSON.stringify(payload, null, 2)}
+
+Return a JSON object with a "results" array, one entry per question in the same order, each with: { "index": number, "accurate": boolean, "reason": string }`,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          results: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                index: { type: "number" },
+                accurate: { type: "boolean" },
+                reason: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const toDelete = [];
+    for (const r of (result?.results || [])) {
+      if (!r.accurate && batch[r.index]) {
+        toDelete.push(batch[r.index].id);
+      }
+    }
+    return toDelete;
+  };
+
   const repairExistingQuestions = async () => {
     setRepairing(true);
     setRepairResults(null);
@@ -133,6 +182,7 @@ export default function GenerateQuestions() {
       let fixed = 0;
       const updates = [];
 
+      // Step 1: Fix answer mismatches
       for (const q of allQuestions) {
         let newCorrect = q.correct_answer;
         let changed = false;
@@ -140,10 +190,7 @@ export default function GenerateQuestions() {
         if (q.question_type === 'multiple_choice' && q.options?.length > 0) {
           const options = q.options.map(o => o?.trim());
           const match = options.find(opt => normalizeForMatch(opt) === normalizeForMatch(q.correct_answer));
-          if (match && match !== q.correct_answer) {
-            newCorrect = match;
-            changed = true;
-          }
+          if (match && match !== q.correct_answer) { newCorrect = match; changed = true; }
         }
 
         if (q.question_type === 'true_false') {
@@ -157,9 +204,21 @@ export default function GenerateQuestions() {
           fixed++;
         }
       }
-
       await Promise.all(updates);
-      setRepairResults({ success: true, total: allQuestions.length, fixed });
+
+      // Step 2: Fact-check all questions in batches of 5
+      const BATCH = 5;
+      let deleted = 0;
+      for (let i = 0; i < allQuestions.length; i += BATCH) {
+        const batch = allQuestions.slice(i, i + BATCH);
+        const toDelete = await factCheckBatch(batch);
+        for (const id of toDelete) {
+          await base44.entities.LawQuestion.delete(id);
+          deleted++;
+        }
+      }
+
+      setRepairResults({ success: true, total: allQuestions.length, fixed, deleted });
     } catch (err) {
       setRepairResults({ success: false, error: err.message });
     } finally {
