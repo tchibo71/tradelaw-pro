@@ -22,6 +22,7 @@ import { motion } from 'framer-motion';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     loadUser();
