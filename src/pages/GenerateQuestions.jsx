@@ -140,13 +140,20 @@ export default function GenerateQuestions() {
     }));
 
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a professional licensing law expert. For each question below, verify whether the stated correct_answer is actually accurate based on REAL current laws and regulations for that trade and jurisdiction. Use your knowledge and internet search to verify. Mark a question as INACCURATE if the correct_answer is factually wrong (e.g., wrong hour requirements, wrong fees, wrong license tiers, wrong agency names, etc.). Be strict - if something is genuinely incorrect, flag it.
+      prompt: `You are a strict professional licensing law fact-checker. For each question below, use internet search to verify whether the correct_answer is REAL and currently accurate law.
+
+CRITICAL RULES:
+- If you CANNOT find a specific statute or regulation that EXPLICITLY states the exact fact in correct_answer, mark it INACCURATE.
+- Be especially skeptical of: specific hour requirements (e.g. "15-hour course"), specific dollar amounts, specific exam names, specific agency procedures. These must be verifiable in actual law text.
+- Do NOT give benefit of the doubt. If you can't confirm it with a real source, mark it INACCURATE.
+- A question is ACCURATE only if you find a real, currently-in-force law/regulation that matches.
 
 Questions to verify:
 ${JSON.stringify(payload, null, 2)}
 
 Return a JSON object with a "results" array, one entry per question in the same order, each with: { "index": number, "accurate": boolean, "reason": string }`,
       add_context_from_internet: true,
+      model: "gemini_3_pro",
       response_json_schema: {
         type: "object",
         properties: {
