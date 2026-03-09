@@ -584,7 +584,8 @@ Keep explanations to 1 sentence maximum.`;
         'licensed','licensing','contractor','installer','system','septic','tank','tennessee',
         'federal','county','local','permit','permits','permitted','approval','approved',
         ...selectedTrades.flatMap(t => t.toLowerCase().split(' ')),
-        selectedJurisdiction.toLowerCase()
+        selectedJurisdiction.toLowerCase(),
+        ...(focusArea ? focusArea.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3) : [])
       ]);
       const questionSimilarity = (a, b) => {
         const words = (str) => new Set(
