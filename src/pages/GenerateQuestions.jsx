@@ -514,6 +514,27 @@ Distribute questions evenly across trades: ${tradesLabel}. Keep explanations SHO
               </div>
             )}
 
+            {/* Repair existing questions */}
+            <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
+              <p className="text-sm font-semibold text-orange-900 mb-2">🔧 Fix Existing Questions</p>
+              <p className="text-xs text-orange-800 mb-3">If answers are being marked wrong when they should be correct, click this to repair all existing questions in the database.</p>
+              <Button
+                onClick={repairExistingQuestions}
+                disabled={repairing}
+                variant="outline"
+                className="border-orange-400 text-orange-900 hover:bg-orange-100 w-full"
+              >
+                {repairing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Repairing...</> : 'Repair All Existing Questions'}
+              </Button>
+              {repairResults && (
+                <p className={`text-sm mt-2 font-medium ${repairResults.success ? 'text-green-800' : 'text-red-800'}`}>
+                  {repairResults.success
+                    ? `✓ Scanned ${repairResults.total} questions, fixed ${repairResults.fixed} answer mismatches.`
+                    : `Error: ${repairResults.error}`}
+                </p>
+              )}
+            </div>
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
                 <strong>How it works:</strong> This tool uses AI with real-time legal research to generate 
