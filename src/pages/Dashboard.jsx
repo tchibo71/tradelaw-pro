@@ -247,7 +247,7 @@ export default function Dashboard() {
                         size="icon"
                         className="text-gray-400 hover:text-red-500"
                         onClick={async () => {
-                          await base44.entities.StudySession.delete(session.id);
+                          try { await base44.entities.StudySession.delete(session.id); } catch (_) {}
                           queryClient.invalidateQueries({ queryKey: ['sessions'] });
                         }}
                       >
