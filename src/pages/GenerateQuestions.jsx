@@ -400,6 +400,12 @@ Keep explanations to 1 sentence maximum.`;
     setResults(null);
 
     try {
+      // Fetch existing questions to avoid repetition
+      const existingQuestions = await base44.entities.LawQuestion.filter({
+        jurisdiction: selectedJurisdiction
+      });
+      const existingTexts = existingQuestions.map(q => q.question_text).filter(Boolean);
+
       // Split into batches of 5 to avoid JSON truncation with large requests
       const BATCH_SIZE = 5;
       const allQuestions = [];
@@ -408,7 +414,9 @@ Keep explanations to 1 sentence maximum.`;
 
       while (remaining > 0) {
         const batchCount = Math.min(BATCH_SIZE, remaining);
-        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount);
+        // Pass all existing + newly generated texts to avoid repeats
+        const allExistingTexts = [...existingTexts, ...allQuestions.map(q => q.question_text)];
+        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingTexts);
         const response = await callLLM(prompt);
         if (response?.questions?.length > 0) {
           allQuestions.push(...response.questions.slice(0, batchCount));
