@@ -605,24 +605,27 @@ Keep explanations to 1 sentence maximum.`;
           .replace(/\s+/g, ' ')
           .trim();
 
-      const deduplicatedQuestions = allQuestions.filter(q => q.question_text);
+      // Filter out questions that embed their answer in the question text or duplicate citations
+      const seenCitations = new Set(existingCitations);
+      const validQuestions = allQuestions.filter(q => {
+        if (!q.question_text || !q.correct_answer) return false;
+        
+        // Block if citation already exists (only keep first instance of each citation)
+        if (q.law_citation && seenCitations.has(q.law_citation)) return false;
+        if (q.law_citation) seenCitations.add(q.law_citation);
 
-      // Filter out questions that embed their answer in the question text
-      const answerEmbeddedFilter = (q) => {
-        if (!q.question_text || !q.correct_answer) return true;
+        // Block if answer is embedded in question text
         const qLower = q.question_text.toLowerCase();
         const aLower = q.correct_answer.toLowerCase().trim();
-        // Reject if the exact answer string appears literally in the question
         if (aLower.length > 2 && qLower.includes(aLower)) return false;
-        // For multiple choice: reject if ANY option appears in the question phrased as a declaration
-        // (heuristic: question ends with a period but doesn't contain a "?" — it's a statement, not a question)
+
+        // Block malformed multiple choice (question ends with . instead of ?)
         if (q.question_type === 'multiple_choice') {
           const trimmed = q.question_text.trim();
           if (!trimmed.includes('?') && trimmed.endsWith('.')) return false;
         }
         return true;
-      };
-      const validQuestions = deduplicatedQuestions.filter(answerEmbeddedFilter);
+      });
 
       // Create questions in database
       const questionsToCreate = validQuestions.map((q, idx) => {
