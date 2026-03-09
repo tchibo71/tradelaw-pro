@@ -40,7 +40,7 @@ export default function Study() {
     }
 
     // Fetch questions for selected trades/jurisdiction
-    const allQuestions = await base44.entities.LawQuestion.list();
+    const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
     const filteredQuestions = allQuestions.filter(q =>
       studyTrades.includes(q.trade) &&
       q.jurisdiction === studyJurisdiction
@@ -53,7 +53,7 @@ export default function Study() {
     // Sort questions based on spaced repetition
     const sortedQuestions = sortQuestionsForSpacedRepetition(filteredQuestions, attempts, reviewQueue);
     
-    setQuestions(sortedQuestions.slice(0, 20)); // up to 20 questions per session
+    setQuestions(sortedQuestions); // use all available questions
 
     // Create session
     const session = await base44.entities.StudySession.create({
