@@ -573,26 +573,13 @@ Keep explanations to 1 sentence maximum.`;
         .filter(q => selectedTrades.some(t => q.trade === t))
         .map(q => q.question_text).filter(Boolean);
       
-      // Simple near-exact duplicate check: only block if question text is almost identical
-      // (The LLM prompt already instructs it to avoid existing questions — we just catch the rare true duplicate)
+      // Only block exact duplicates — the LLM prompt already handles avoiding similar questions
       const normalizeQ = (str) =>
         (str || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
       const isTrueDuplicate = (newQ, existingList) => {
         const nNew = normalizeQ(newQ);
-        return existingList.some(ex => {
-          const nEx = normalizeQ(ex);
-          if (nNew.length === 0 || nEx.length === 0) return false;
-          // Block only if 95%+ character overlap (essentially identical)
-          const longer = Math.max(nNew.length, nEx.length);
-          let matches = 0;
-          const shorter = nNew.length <= nEx.length ? nNew : nEx;
-          const longerStr = nNew.length > nEx.length ? nNew : nEx;
-          for (let i = 0; i < shorter.length; i++) {
-            if (longerStr.includes(shorter[i])) matches++;
-          }
-          // Simpler: just check if one contains the other (substring = definite duplicate)
-          return nEx.includes(nNew) || nNew.includes(nEx) || (nNew === nEx);
-        });
+        if (nNew.length === 0) return false;
+        return existingList.some(ex => normalizeQ(ex) === nNew);
       };
 
       // Split into batches of 5 to avoid JSON truncation with large requests
