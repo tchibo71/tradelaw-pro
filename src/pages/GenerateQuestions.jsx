@@ -601,16 +601,7 @@ Keep explanations to 1 sentence maximum.`;
           .replace(/\s+/g, ' ')
           .trim();
 
-      // Filter out only true duplicates (near-identical question text)
-      const deduplicatedQuestions = [];
-      const seenTexts = [...existingTexts];
-      for (const q of allQuestions) {
-        if (!q.question_text) continue;
-        if (!isTrueDuplicate(q.question_text, seenTexts)) {
-          deduplicatedQuestions.push(q);
-          seenTexts.push(q.question_text);
-        }
-      }
+      const deduplicatedQuestions = allQuestions.filter(q => q.question_text);
 
       // Filter out questions that embed their answer in the question text
       const answerEmbeddedFilter = (q) => {
