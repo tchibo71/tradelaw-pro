@@ -20,11 +20,11 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
   };
 
   const handleNext = () => {
-    const isCorrect = selectedAnswer?.trim() === question.correct_answer?.trim();
+    const isCorrect = selectedAnswer?.trim().toLowerCase() === question.correct_answer?.trim().toLowerCase();
     onAnswer(selectedAnswer, isCorrect);
   };
 
-  const isCorrect = selectedAnswer?.trim() === question.correct_answer?.trim();
+  const isCorrect = selectedAnswer?.trim().toLowerCase() === question.correct_answer?.trim().toLowerCase();
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl border-2">
