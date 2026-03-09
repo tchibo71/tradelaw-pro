@@ -47,7 +47,7 @@ export default function MultipleChoiceCard({ question, onAnswer }) {
         <div className="space-y-3">
           {question.options?.map((option, index) => {
             const isSelected = selectedAnswer === option;
-            const isCorrectOption = option?.trim() === question.correct_answer?.trim();
+            const isCorrectOption = option?.trim().toLowerCase() === question.correct_answer?.trim().toLowerCase();
             
             let bgColor = 'bg-white hover:bg-gray-50';
             let borderColor = 'border-gray-200';
