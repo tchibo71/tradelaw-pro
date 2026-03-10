@@ -1243,6 +1243,25 @@ Keep explanations to 1 sentence maximum.`;
                 )}
               </div>
 
+              {/* Master Plan Summary */}
+              {masterPlanData && masterPlanData.length > 0 && (
+                <div className="border border-violet-200 rounded-lg bg-violet-50 p-4">
+                  <p className="text-sm font-semibold text-violet-900 mb-1">📋 Master Question Plan Ready</p>
+                  <p className="text-xs text-violet-800">
+                    {masterPlanData.length} pre-defined slots across {[...new Set(masterPlanData.map(s => s.law_citation))].length} laws
+                    ({[...new Set(masterPlanData.map(s => s.dimension))].length} taxonomy dimensions covered).
+                    Generation will fill these slots in order.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {[...new Set(masterPlanData.map(s => s.dimension))].map(dim => (
+                      <span key={dim} className="text-[10px] bg-violet-200 text-violet-900 rounded px-1.5 py-0.5 font-medium">
+                        {dim} ({masterPlanData.filter(s => s.dimension === dim).length})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Law Registry */}
               <div className="border border-indigo-200 rounded-lg bg-indigo-50 p-4">
                 <div className="flex items-center justify-between mb-2">
