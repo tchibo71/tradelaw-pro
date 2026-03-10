@@ -1017,14 +1017,14 @@ Keep explanations to 1 sentence maximum.`;
       const slotsToFill = openSlots.slice(0, questionCount);
       if (slotsToFill.length === 0) throw new Error('All pre-planned slots are already covered in your catalogue. Generate for a different trade or jurisdiction.');
 
-      // ── Phase 5: Fill slots one by one ──────────────────────────────────────
+      // ── Phase 5: Fill slots in parallel batches ──────────────────────────────
       const allQuestions = [];
       let culledCount = 0;
       let exhaustedSlots = 0;
 
-      const isValidQuestion = (q) => {
+      const isValidQuestion = (q, fps) => {
         if (!q.question_text || !q.correct_answer) return false;
-        if (q.legal_fact_fingerprint && seenFingerprints.has(q.legal_fact_fingerprint.trim().toLowerCase())) return false;
+        if (q.legal_fact_fingerprint && fps.has(q.legal_fact_fingerprint.trim().toLowerCase())) return false;
         const qLower = q.question_text.toLowerCase();
         const aLower = q.correct_answer.toLowerCase().trim();
         if (aLower.length > 2 && qLower.includes(aLower)) return false;
@@ -1035,44 +1035,44 @@ Keep explanations to 1 sentence maximum.`;
         return true;
       };
 
-      const acceptQuestion = (q) => {
-        if (q.legal_fact_fingerprint) seenFingerprints.add(q.legal_fact_fingerprint.trim().toLowerCase());
-        if (q.law_citation) seenCitations.add(q.law_citation);
-        allQuestions.push(q);
-      };
+      // Snapshot of dedup sets at the start of each concurrent batch (before any fills)
+      // Each slot gets the same snapshot — then we merge results and update sets after the batch
+      let filledCount = 0;
+      for (let i = 0; i < slotsToFill.length; i += FILL_CONCURRENCY) {
+        const batch = slotsToFill.slice(i, i + FILL_CONCURRENCY);
+        const fpSnapshot = new Set(seenFingerprints);
+        const citSnapshot = new Set(seenCitations);
 
-      for (let i = 0; i < slotsToFill.length; i++) {
-        const slot = slotsToFill[i];
         setGenProgress({
-          current: i + 1,
+          current: filledCount,
           total: slotsToFill.length,
-          stage: `Filling slot ${i + 1}/${slotsToFill.length}: [${slot.dimension}] ${slot.law_citation}`
+          stage: `Filling slots ${i + 1}–${Math.min(i + FILL_CONCURRENCY, slotsToFill.length)} of ${slotsToFill.length}...`
         });
 
-        const prompt = buildSlotFillPrompt(slot, effectiveJurisdiction, selectedTrades, [...seenFingerprints], [...seenCitations]);
-        const response = await callLLM(prompt);
-        const q = response?.questions?.[0];
+        const batchResults = await Promise.all(batch.map(async (slot) => {
+          const prompt = buildSlotFillPrompt(slot, effectiveJurisdiction, selectedTrades, [...fpSnapshot], [...citSnapshot]);
+          const response = await callLLM(prompt);
+          const q = response?.questions?.[0];
+          if (q && isValidQuestion(q, fpSnapshot)) return { slot, q };
 
-        if (q && isValidQuestion(q)) {
-          acceptQuestion(q);
-        } else {
-          culledCount++;
-          let replaced = false;
-          for (let attempt = 0; attempt < 3; attempt++) {
-            setGenProgress({
-              current: i + 1,
-              total: slotsToFill.length,
-              stage: `Retry ${attempt + 1}/3 for slot: [${slot.dimension}] ${slot.law_citation}...`
-            });
-            const retryResponse = await callLLM(prompt);
-            const retryQ = retryResponse?.questions?.[0];
-            if (retryQ && isValidQuestion(retryQ)) {
-              acceptQuestion(retryQ);
-              replaced = true;
-              break;
-            }
+          // Single retry on failure
+          const retryResponse = await callLLM(prompt);
+          const retryQ = retryResponse?.questions?.[0];
+          if (retryQ && isValidQuestion(retryQ, fpSnapshot)) return { slot, q: retryQ, retried: true };
+          return { slot, q: null };
+        }));
+
+        for (const { q, retried } of batchResults) {
+          if (q) {
+            if (retried) culledCount++;
+            if (q.legal_fact_fingerprint) seenFingerprints.add(q.legal_fact_fingerprint.trim().toLowerCase());
+            if (q.law_citation) seenCitations.add(q.law_citation);
+            allQuestions.push(q);
+          } else {
+            culledCount++;
+            exhaustedSlots++;
           }
-          if (!replaced) exhaustedSlots++;
+          filledCount++;
         }
       }
 
