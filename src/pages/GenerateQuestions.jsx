@@ -481,17 +481,124 @@ Return a JSON object with a "results" array, one entry per question in the same 
       'pipe material and perforations specifications', 'distribution box requirements',
       'system certification after installation', 'variance application procedures',
       'license suspension and revocation grounds', 'apprenticeship supervision requirements'
-    ]
+    ],
+    'Septic System Pumper': [
+      'pumping frequency requirements by system type and size', 'manifest and waste tracking documentation',
+      'disposal site permit requirements', 'vehicle and equipment standards',
+      'prohibited disposal locations', 'spill response and reporting requirements',
+      'license application and examination requirements', 'background check requirements',
+      'waste transport route restrictions', 'emergency pumping procedures',
+      'inspection duties during pumping', 'reporting failing systems to authorities',
+      'grease trap and commercial system pumping differences', 'record retention periods'
+    ],
+    'Septic System Designer': [
+      'soil scientist vs engineer design authority', 'site evaluation report requirements',
+      'design criteria for different soil types', 'alternative system design approval process',
+      'engineered system stamping requirements', 'design life expectancy standards',
+      'loading rate calculations', 'reserve area requirements',
+      'mound system design specifications', 'drip irrigation system design rules',
+      'nitrogen reduction system requirements', 'design submission and review timeline',
+      'design changes during installation', 'as-built certification responsibilities'
+    ],
+    'Septic System Inspector': [
+      'inspection checklist requirements', 'point-of-sale inspection requirements',
+      'inspector certification vs contractor license', 'reporting responsibilities for failing systems',
+      'access requirements for inspections', 'documentation and report format',
+      'third-party inspector qualifications', 'conflict of interest restrictions',
+      'follow-up inspection requirements after repairs', 'inspection frequency for commercial systems'
+    ],
   };
-  // ^^^ DEAD — kept for reference only. Not called anywhere.
 
-  const _normalizeFP_unused = (str) =>
+  // Normalize a fingerprint for comparison
+  const normalizeFP = (str) =>
     (str || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  const normalizeFP = _normalizeFP_unused;
+  const scanForDuplicates = async () => {
+    setDeduplicating(true);
+    setFlaggedDupes(null);
+    setDedupeResults(null);
+    try {
+      const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
+      const byFingerprint = {};
+      for (const q of allQuestions) {
+        if (!q.legal_fact_fingerprint) continue;
+        const key = normalizeFP(q.legal_fact_fingerprint);
+        if (!byFingerprint[key]) byFingerprint[key] = [];
+        byFingerprint[key].push(q);
+      }
+      const flagged = [];
+      for (const group of Object.values(byFingerprint)) {
+        if (group.length < 2) continue;
+        const sorted = [...group].sort((a, b) => (b.explanation?.length || 0) - (a.explanation?.length || 0));
+        const keepQ = sorted[0];
+        for (let i = 1; i < sorted.length; i++) {
+          flagged.push({ keepQ, removeQ: sorted[i], matchReason: 'Same legal fact fingerprint' });
+        }
+      }
+      setFlaggedDupes(flagged);
+      const defaults = {};
+      for (const pair of flagged) defaults[pair.removeQ.id] = true;
+      setDupeSelections(defaults);
+    } catch (err) {
+      setDedupeResults({ success: false, error: err.message });
+    } finally {
+      setDeduplicating(false);
+    }
+  };
 
-  const scanForDuplicates_PLACEHOLDER = 'placeholder';
-  const _dead_end = null;
+  const confirmDupeDelete = async () => {
+    setDeduplicating(true);
+    try {
+      const toDelete = Object.entries(dupeSelections).filter(([, checked]) => checked).map(([id]) => id);
+      await Promise.all(toDelete.map(id => base44.entities.LawQuestion.delete(id)));
+      setDedupeResults({ success: true, removed: toDelete.length });
+      setFlaggedDupes(null);
+      setDupeSelections({});
+    } catch (err) {
+      setDedupeResults({ success: false, error: err.message });
+    } finally {
+      setDeduplicating(false);
+    }
+  };
+
+  // Enumerate every applicable law/regulation for the trades in the jurisdiction.
+  const fetchApplicableLaws = async (trades, jurisdiction, mode) => {
+    const scope = mode === 'federal'
+      ? 'FEDERAL law only (federal statutes and federal agency regulations — e.g. OSHA, EPA, DOT, FTC). Do NOT include any state laws.'
+      : `${jurisdiction} STATE law only (${jurisdiction} statutes and ${jurisdiction} agency/department regulations). Do NOT include any federal laws.`;
+
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `You are a professional licensing law researcher. Enumerate EVERY applicable law and regulation for the following trades within the specified scope.
+
+Trades: ${trades.join(', ')}
+Scope: ${scope}
+
+List every statute chapter/section AND every agency rule chapter that applies to these trades. Be exhaustive — include licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting rules, enforcement/penalty provisions, and any other law a licensed practitioner must know.
+
+For each law: citation (exact), title (short), law_type ("statute" or "regulation"), trade (one of the input trade names).`,
+      add_context_from_internet: true,
+      model: "gemini_3_flash",
+      response_json_schema: {
+        type: "object",
+        properties: {
+          laws: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                citation: { type: "string" },
+                title: { type: "string" },
+                law_type: { type: "string" },
+                trade: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    });
+    return result?.laws || [];
+  };
+
 
       'pumping frequency requirements by system type and size', 'manifest and waste tracking documentation',
       'disposal site permit requirements', 'vehicle and equipment standards',
