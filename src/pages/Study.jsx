@@ -39,16 +39,13 @@ export default function Study() {
       return;
     }
 
-    // Fetch questions for selected trades/jurisdiction
-    const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
-    const filteredQuestions = allQuestions.filter(q =>
-      studyTrades.includes(q.trade) &&
-      q.jurisdiction === studyJurisdiction
-    );
-
-    // Get user's attempt history for spaced repetition
-    const attempts = await base44.entities.QuestionAttempt.filter({ created_by: currentUser.email });
-    const reviewQueue = await base44.entities.ReviewQueue.filter({ created_by: currentUser.email });
+    // Parallel fetches — server-side filter by jurisdiction, then filter trades client-side
+    const [questionsByJurisdiction, attempts, reviewQueue] = await Promise.all([
+      base44.entities.LawQuestion.filter({ jurisdiction: studyJurisdiction }, null, 500),
+      base44.entities.QuestionAttempt.filter({ created_by: currentUser.email }),
+      base44.entities.ReviewQueue.filter({ created_by: currentUser.email })
+    ]);
+    const filteredQuestions = questionsByJurisdiction.filter(q => studyTrades.includes(q.trade));
 
     // Sort questions based on spaced repetition
     const sortedQuestions = sortQuestionsForSpacedRepetition(filteredQuestions, attempts, reviewQueue);
