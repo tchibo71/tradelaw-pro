@@ -36,7 +36,7 @@ export default function Study() {
     const studyJurisdiction = urlJurisdiction || currentUser.preferred_jurisdiction;
 
     if (!studyTrades || !studyJurisdiction) {
-      window.location.href = createPageUrl('Setup');
+      navigate(createPageUrl('Setup'));
       return;
     }
 
