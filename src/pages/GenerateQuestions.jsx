@@ -71,7 +71,7 @@ const normalizeFP = (str) =>
 const callLLM = (prompt) =>
   base44.integrations.Core.InvokeLLM({
     prompt,
-    add_context_from_internet: true,
+    add_context_from_internet: false,
     model: "gemini_3_flash",
     response_json_schema: {
       type: "object",
