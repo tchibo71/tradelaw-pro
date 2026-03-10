@@ -347,17 +347,61 @@ Return a JSON object with a "results" array, one entry per question in the same 
     return shuffled.slice(0, Math.min(count, areas.length));
   };
 
-  // Build a coverage taxonomy: dimensions -> testable facts, fresh per trade/focus selection
+  // Build a coverage taxonomy: dimensions -> testable facts, fresh per trade/focus selection.
+  // When a focus area is given, drill into sub-dimensions for that narrow topic.
   const fetchTaxonomy = async (trades, jurisdiction, focusAreaText) => {
-    const focusSection = focusAreaText?.trim()
-      ? `Focus specifically on this area: "${focusAreaText.trim()}".`
-      : 'Cover the full breadth of applicable law and regulation.';
+    const isFocused = !!focusAreaText?.trim();
 
+    if (isFocused) {
+      // Deep sub-dimension taxonomy for a narrow focus topic
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a professional licensing exam curriculum designer. A student is specifically studying "${focusAreaText.trim()}" as it applies to ${trades.join(', ')} in ${jurisdiction}.
+
+Your job is to build a DEEP sub-dimension taxonomy for this narrow topic. Do NOT reduce the number of dimensions — instead INCREASE specificity so that at least 15 completely unique questions can be generated before any sub-dimension repeats.
+
+Required sub-dimensions to populate (use ALL of them):
+- numeric_thresholds: every specific number mandated by law for this topic (distances, depths, sizes, volumes, times, fees, percentages) — list at least 5 distinct values
+- procedural_steps: each mandatory step in the required procedure, in order — list each step as a separate testable fact
+- equipment_specifications: required equipment types, materials, grades, standards, or approved products
+- soil_or_site_criteria: classification criteria, evaluation standards, pass/fail benchmarks, site conditions (adapt label to topic)
+- pass_fail_criteria: specific thresholds or conditions that determine approval vs. rejection
+- documentation_forms: specific forms, reports, logs, permits, or filings required and who must submit them
+- authorized_parties: who is legally authorized (or prohibited) from performing each step or making each determination
+- timing_and_deadlines: required timeframes, waiting periods, notice windows, or scheduling rules
+- exemptions_and_exceptions: what is exempt from this requirement and under what conditions
+- enforcement_and_penalties: what violations are possible, who enforces them, and what the consequences are
+
+For EACH sub-dimension, list 4–8 specific, concrete, currently-in-force testable facts from ${jurisdiction} law. Be precise — real numbers, real agency names, real rule citations where possible. Do NOT include vague or abstract descriptions. Only include facts you are confident are real.
+
+Trades: ${trades.join(', ')}
+Topic: ${focusAreaText.trim()}
+Jurisdiction: ${jurisdiction}`,
+        add_context_from_internet: true,
+        model: "gemini_3_flash",
+        response_json_schema: {
+          type: "object",
+          properties: {
+            taxonomy: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  dimension: { type: "string" },
+                  testable_facts: { type: "array", items: { type: "string" } }
+                }
+              }
+            }
+          }
+        }
+      });
+      return result?.taxonomy || [];
+    }
+
+    // Standard broad taxonomy (no focus area)
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: `You are a professional licensing exam curriculum designer. For the licensed trades listed below in ${jurisdiction}, build a coverage taxonomy by breaking the applicable laws and regulations into distinct testable dimensions.
 
 Trades: ${trades.join(', ')}
-${focusSection}
 
 For each dimension, list 4–8 specific, concrete, currently-in-force testable facts or rules found in ${jurisdiction} law for these trades. Be precise — list actual requirements, numbers, processes, or parties, not abstract descriptions. Only include facts you are confident are real.
 
