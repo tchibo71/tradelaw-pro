@@ -943,16 +943,16 @@ Keep explanations to 1 sentence maximum.`;
       if (questionsToCreate.length === 0) throw new Error('All generated questions were too similar to existing ones. Try a different focus area or broader topic.');
 
       await base44.entities.LawQuestion.bulkCreate(questionsToCreate);
-      
+
       queryClient.invalidateQueries(['questions']);
-      
-      const totalGenerated = allQuestions.length;
-      const filteredOut = totalGenerated - questionsToCreate.length;
+
+      const filteredOut = allQuestions.length - questionsToCreate.length;
       setResults({
         success: true,
         count: questionsToCreate.length,
         filteredOut,
-        trades: selectedTrades
+        trades: selectedTrades,
+        lawsCovered: allocation.length
       });
     } catch (error) {
       console.error('Error generating questions:', error);
