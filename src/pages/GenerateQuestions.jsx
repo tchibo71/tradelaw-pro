@@ -1041,16 +1041,80 @@ Keep explanations to 1 sentence maximum.`;
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                   Select Jurisdiction
                 </label>
-                <Select value={selectedJurisdiction} onValueChange={setSelectedJurisdiction}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose jurisdiction..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64">
-                    {STATES.map(state => (
-                      <SelectItem key={state} value={state}>{state}</SelectItem>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={() => { setJurisdictionMode('state'); setLawRegistry([]); }}
+                    className={`flex-1 py-1.5 rounded text-sm font-medium border transition-colors ${jurisdictionMode === 'state' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-purple-50'}`}
+                  >
+                    State Law
+                  </button>
+                  <button
+                    onClick={() => { setJurisdictionMode('federal'); setLawRegistry([]); }}
+                    className={`flex-1 py-1.5 rounded text-sm font-medium border transition-colors ${jurisdictionMode === 'federal' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-purple-50'}`}
+                  >
+                    Federal Law Only
+                  </button>
+                </div>
+                {jurisdictionMode === 'state' && (
+                  <Select value={selectedJurisdiction} onValueChange={(v) => { setSelectedJurisdiction(v); setLawRegistry([]); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose state..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {STATES.filter(s => s !== 'Federal').map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {jurisdictionMode === 'federal' && (
+                  <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded px-3 py-2">Questions will use federal statutes and federal agency regulations only (OSHA, EPA, DOT, etc.)</p>
+                )}
+              </div>
+
+              {/* Law Registry */}
+              <div className="border border-indigo-200 rounded-lg bg-indigo-50 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-indigo-900">📋 Applicable Laws</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      if (selectedTrades.length === 0 || (jurisdictionMode === 'state' && !selectedJurisdiction)) return;
+                      setLawRegistryLoading(true);
+                      setLawRegistry([]);
+                      const laws = await fetchApplicableLaws(selectedTrades, jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction, jurisdictionMode);
+                      setLawRegistry(laws);
+                      setLawRegistryLoading(false);
+                    }}
+                    disabled={lawRegistryLoading || selectedTrades.length === 0 || (jurisdictionMode === 'state' && !selectedJurisdiction)}
+                    className="border-indigo-400 text-indigo-800 hover:bg-indigo-100 text-xs"
+                  >
+                    {lawRegistryLoading ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Loading...</> : lawRegistry.length > 0 ? 'Refresh Laws' : 'Enumerate Laws'}
+                  </Button>
+                </div>
+                {lawRegistry.length === 0 && !lawRegistryLoading && (
+                  <p className="text-xs text-indigo-700">Click "Enumerate Laws" to preview all laws that will be covered before generating questions. Questions will be distributed proportionally across all identified laws.</p>
+                )}
+                {lawRegistryLoading && (
+                  <p className="text-xs text-indigo-700 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />Researching all applicable laws...</p>
+                )}
+                {lawRegistry.length > 0 && (
+                  <div className="space-y-1 max-h-64 overflow-y-auto mt-2">
+                    <p className="text-xs text-indigo-700 mb-2 font-medium">{lawRegistry.length} laws identified — questions will be distributed proportionally (min 5 per law, max 20% per law):</p>
+                    {lawRegistry.map((law, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-indigo-100 last:border-0">
+                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${law.law_type === 'statute' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {law.law_type === 'statute' ? 'STAT' : 'REG'}
+                        </span>
+                        <div>
+                          <span className="font-medium text-indigo-900">{law.citation}</span>
+                          <span className="text-indigo-600 ml-1">— {law.title}</span>
+                        </div>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
               </div>
 
               <div>
