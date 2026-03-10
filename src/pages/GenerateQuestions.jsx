@@ -103,32 +103,42 @@ const fetchApplicableLaws = async (trades, jurisdiction, mode) => {
     ? 'FEDERAL law only (OSHA, EPA, DOT, FTC etc). Do NOT include state laws.'
     : `${jurisdiction} STATE law only. Do NOT include federal laws.`;
 
-  const result = await base44.integrations.Core.InvokeLLM({
-    prompt: `List every applicable law and regulation for these licensed trades in scope: ${scope}
-Trades: ${trades.join(', ')}
-Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties.
-For each: citation (exact), title (short), law_type ("statute"|"regulation"), trade (one of the input names).`,
-    add_context_from_internet: true,
-    model: "gemini_3_flash",
-    response_json_schema: {
-      type: "object",
-      properties: {
-        laws: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              citation: { type: "string" },
-              title: { type: "string" },
-              law_type: { type: "string" },
-              trade: { type: "string" }
-            }
+  const schema = {
+    type: "object",
+    properties: {
+      laws: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            citation: { type: "string" },
+            title: { type: "string" },
+            law_type: { type: "string" },
+            trade: { type: "string" }
           }
         }
       }
     }
-  });
-  return result?.laws || [];
+  };
+
+  // Batch trades 3 at a time to avoid 502 timeouts
+  const BATCH = 3;
+  const batches = [];
+  for (let i = 0; i < trades.length; i += BATCH) batches.push(trades.slice(i, i + BATCH));
+
+  const batchResults = await Promise.all(batches.map(batch =>
+    base44.integrations.Core.InvokeLLM({
+      prompt: `List applicable laws and regulations for these licensed trades in scope: ${scope}
+Trades: ${batch.join(', ')}
+Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties.
+For each: citation (exact), title (short), law_type ("statute"|"regulation"), trade (one of the input names).`,
+      add_context_from_internet: true,
+      model: "gemini_3_flash",
+      response_json_schema: schema
+    }).then(r => r?.laws || []).catch(() => [])
+  ));
+
+  return batchResults.flat();
 };
 
 const planSingleLaw = async (law, jurisdiction, trades) => {
