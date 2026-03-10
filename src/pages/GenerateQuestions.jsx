@@ -1219,7 +1219,8 @@ Keep explanations to 1 sentence maximum.`;
                         </p>
                         {results.filteredOut > 0 && (
                           <p className="text-xs text-amber-700 mt-1">
-                            ⚠ {results.filteredOut} question{results.filteredOut !== 1 ? 's were' : ' was'} skipped — too similar to existing questions in your catalogue.
+                            ⚠ {results.filteredOut} culled question{results.filteredOut !== 1 ? 's' : ''} triggered replacement attempts.
+                            {results.exhaustedSlots > 0 && ` ${results.exhaustedSlots} slot${results.exhaustedSlots !== 1 ? 's' : ''} could not be replaced (taxonomy exhausted).`}
                           </p>
                         )}
                         <Link
