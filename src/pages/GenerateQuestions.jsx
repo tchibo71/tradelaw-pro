@@ -618,7 +618,7 @@ Keep explanations to 1 sentence maximum.`;
     setResults(null);
     const BATCH_SIZE = 5;
     const totalBatches = Math.ceil(questionCount / BATCH_SIZE);
-    // +1 for ratio research
+    // +1 for taxonomy + ratio research (done in parallel)
     const totalSteps = 1 + totalBatches;
     let step = 0;
 
