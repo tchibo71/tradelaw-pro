@@ -628,8 +628,12 @@ Keep explanations to 1 sentence maximum.`;
     };
 
     try {
-      advanceProgress('Researching statute vs regulation proportions...');
-      const ratioMap = await fetchStatuteRegRatio(selectedTrades, selectedJurisdiction);
+      // Fetch taxonomy + ratio in parallel
+      advanceProgress('Building coverage taxonomy and researching statute proportions...');
+      const [taxonomy, ratioMap] = await Promise.all([
+        fetchTaxonomy(selectedTrades, selectedJurisdiction, focusArea),
+        fetchStatuteRegRatio(selectedTrades, selectedJurisdiction)
+      ]);
 
       // Fetch existing questions to avoid duplicate citations
       const existingQuestions = await base44.entities.LawQuestion.filter({
@@ -638,8 +642,9 @@ Keep explanations to 1 sentence maximum.`;
       const existingCitations = existingQuestions
         .filter(q => selectedTrades.some(t => q.trade === t))
         .map(q => q.law_citation).filter(Boolean);
-      
 
+      // Track used dimension+fact pairs across batches to prevent same-fact repetition
+      const usedDimensionFacts = {}; // { dimension: [fact, fact, ...] }
 
       // Split into batches of 5 to avoid JSON truncation with large requests
       const allQuestions = [];
@@ -648,12 +653,19 @@ Keep explanations to 1 sentence maximum.`;
       while (remaining > 0) {
         const batchCount = Math.min(BATCH_SIZE, remaining);
         advanceProgress(`Generating questions (batch ${Math.ceil((questionCount - remaining) / BATCH_SIZE) + 1} of ${totalBatches})...`);
-        // Pass all existing + newly generated citations to enforce uniqueness
         const allExistingCitations = [...existingCitations, ...allQuestions.map(q => q.law_citation)];
-        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingCitations, ratioMap, focusArea);
+        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingCitations, ratioMap, focusArea, taxonomy, usedDimensionFacts);
         const response = await callLLM(prompt);
         if (response?.questions?.length > 0) {
-          allQuestions.push(...response.questions.slice(0, batchCount));
+          const batch = response.questions.slice(0, batchCount);
+          // Record used dimension+fact pairs
+          for (const q of batch) {
+            if (q.taxonomy_dimension && q.testable_fact) {
+              if (!usedDimensionFacts[q.taxonomy_dimension]) usedDimensionFacts[q.taxonomy_dimension] = [];
+              usedDimensionFacts[q.taxonomy_dimension].push(q.testable_fact);
+            }
+          }
+          allQuestions.push(...batch);
         }
         remaining -= batchCount;
       }
