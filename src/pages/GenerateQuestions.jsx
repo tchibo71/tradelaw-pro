@@ -168,6 +168,7 @@ export default function GenerateQuestions() {
   const [repairing, setRepairing] = useState(false);
   const [repairResults, setRepairResults] = useState(null);
   const [repairProgress, setRepairProgress] = useState({ current: 0, total: 0, stage: '' });
+  const [masterPlanData, setMasterPlanData] = useState(null); // [{dimension, legal_fact_fingerprint, hint, law_citation, ...}]
   const tradeRef = useRef(null);
   const queryClient = useQueryClient();
 
