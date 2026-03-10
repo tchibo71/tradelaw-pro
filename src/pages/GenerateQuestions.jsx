@@ -481,8 +481,18 @@ Return a JSON object with a "results" array, one entry per question in the same 
       'pipe material and perforations specifications', 'distribution box requirements',
       'system certification after installation', 'variance application procedures',
       'license suspension and revocation grounds', 'apprenticeship supervision requirements'
-    ],
-    'Septic System Pumper': [
+    ]
+  };
+  // ^^^ DEAD — kept for reference only. Not called anywhere.
+
+  const _normalizeFP_unused = (str) =>
+    (str || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const normalizeFP = _normalizeFP_unused;
+
+  const scanForDuplicates_PLACEHOLDER = 'placeholder';
+  const _dead_end = null;
+
       'pumping frequency requirements by system type and size', 'manifest and waste tracking documentation',
       'disposal site permit requirements', 'vehicle and equipment standards',
       'prohibited disposal locations', 'spill response and reporting requirements',
