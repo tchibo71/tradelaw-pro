@@ -479,6 +479,95 @@ Return JSON only.`,
     return map;
   };
 
+  // Enumerate every applicable law/regulation for the trades in the jurisdiction.
+  // Returns array of { citation, title, law_type, trade }
+  const fetchApplicableLaws = async (trades, jurisdiction, mode) => {
+    const scope = mode === 'federal'
+      ? 'FEDERAL law only (federal statutes and federal agency regulations — e.g. OSHA, EPA, DOT, FTC). Do NOT include any state laws.'
+      : `${jurisdiction} STATE law only (${jurisdiction} statutes and ${jurisdiction} agency/department regulations). Do NOT include any federal laws.`;
+
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `You are a professional licensing law researcher. Enumerate EVERY applicable law and regulation for the following trades within the specified scope.
+
+Trades: ${trades.join(', ')}
+Scope: ${scope}
+
+List every statute chapter/section AND every agency rule chapter that applies to these trades. Be exhaustive — include:
+- Licensing and registration statutes
+- Continuing education requirements  
+- Bonding and insurance statutes
+- Agency rules for installation/practice standards
+- Inspection and permitting rules
+- Enforcement and penalty provisions
+- Any other law that a licensed practitioner must know
+
+For each law, provide:
+- citation: exact citation (e.g. "TN Code § 68-221-401 to -430" or "TN Dept. of Environment, Rule 0400-48-01")
+- title: short descriptive title (e.g. "On-Site Sewage Disposal Systems — Installer Licensing")
+- law_type: "statute" or "regulation"
+- trade: which trade this primarily applies to (use one of the input trade names)
+
+Return every law you can find. Aim for completeness — it is better to include too many than too few.`,
+      add_context_from_internet: true,
+      model: "gemini_3_flash",
+      response_json_schema: {
+        type: "object",
+        properties: {
+          laws: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                citation: { type: "string" },
+                title: { type: "string" },
+                law_type: { type: "string" },
+                trade: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    });
+    return result?.laws || [];
+  };
+
+  // Given total questionCount and a list of laws, compute how many questions each law gets.
+  // Rules: every law gets min 5 before any law gets a 2nd round; no law > 20% unless < 5 laws total.
+  const computeLawAllocation = (laws, totalCount) => {
+    if (laws.length === 0) return [];
+    const minPerLaw = 5;
+    const maxPct = laws.length >= 5 ? 0.20 : 1.0;
+    const maxPerLaw = Math.max(minPerLaw, Math.floor(totalCount * maxPct));
+
+    // First pass: every law gets minPerLaw (or less if total is very small)
+    const allocation = laws.map(law => ({ ...law, count: 0 }));
+    let remaining = totalCount;
+
+    // Round 1: fill every law up to minPerLaw
+    for (const entry of allocation) {
+      const give = Math.min(minPerLaw, remaining, maxPerLaw);
+      entry.count += give;
+      remaining -= give;
+      if (remaining <= 0) break;
+    }
+
+    // Round 2+: distribute remaining proportionally up to maxPerLaw
+    let moreAvailable = true;
+    while (remaining > 0 && moreAvailable) {
+      moreAvailable = false;
+      for (const entry of allocation) {
+        if (entry.count < maxPerLaw && remaining > 0) {
+          entry.count++;
+          remaining--;
+          moreAvailable = true;
+          if (remaining <= 0) break;
+        }
+      }
+    }
+
+    return allocation.filter(e => e.count > 0);
+  };
+
   // Normalize a fingerprint for comparison: lowercase, collapse whitespace, strip punctuation
   const normalizeFP = (str) =>
     (str || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
