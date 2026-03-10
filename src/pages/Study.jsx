@@ -129,12 +129,13 @@ export default function Study() {
     }
   });
 
-  const handleAnswer = async (userAnswer, isCorrect) => {
+  const handleAnswer = (userAnswer, isCorrect) => {
     const question = questions[currentQuestionIndex];
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+    const now = Date.now();
 
-    // Record attempt
-    await createAttemptMutation.mutateAsync({
+    // Fire-and-forget DB writes — don't block UI
+    createAttemptMutation.mutate({
       question_id: question.id,
       user_answer: userAnswer,
       is_correct: isCorrect,
@@ -143,39 +144,25 @@ export default function Study() {
       repetition_number: 1
     });
 
-    // Update session stats
     if (isCorrect) {
-      await updateSessionMutation.mutateAsync({
+      updateSessionMutation.mutate({
         sessionId: currentSession.id,
-        data: {
-          ...currentSession,
-          correct_answers: currentSession.correct_answers + 1
-        }
+        data: { correct_answers: currentSession.correct_answers + 1 }
       });
-      setCurrentSession(prev => ({
-        ...prev,
-        correct_answers: prev.correct_answers + 1
-      }));
+      setCurrentSession(prev => ({ ...prev, correct_answers: prev.correct_answers + 1 }));
     } else {
-      // Add to review queue
-      await updateReviewQueueMutation.mutateAsync({
-        questionId: question.id,
-        isCorrect
-      });
+      updateReviewQueueMutation.mutate({ questionId: question.id, isCorrect });
     }
 
-    // Move to next question
+    // Advance UI immediately
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
-      setStartTime(Date.now());
+      setStartTime(now);
     } else {
-      // Session complete
-      await updateSessionMutation.mutateAsync({
+      // Session complete — fire update then navigate
+      updateSessionMutation.mutate({
         sessionId: currentSession.id,
-        data: {
-          completed: true,
-          duration_minutes: Math.floor((Date.now() - startTime) / 60000)
-        }
+        data: { completed: true, duration_minutes: Math.floor((now - startTime) / 60000) }
       });
       window.location.href = createPageUrl('Dashboard');
     }
