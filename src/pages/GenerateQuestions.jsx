@@ -807,7 +807,7 @@ Keep explanations to 1 sentence maximum.`;
       if (lawRegistry.length === 0) setLawRegistry(laws);
 
       // Step 2: Compute allocation — how many questions per law
-      const allocation = computeLawAllocation(laws, questionCount);
+      allocation = computeLawAllocation(laws, questionCount);
       const totalBatches = allocation.reduce((sum, a) => sum + Math.ceil(a.count / BATCH_SIZE), 0);
 
       setGenProgress({ current: 2, total: totalBatches + 3, stage: `Building coverage taxonomy...` });
