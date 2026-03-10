@@ -24,37 +24,32 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
-    const currentUser = await base44.auth.me();
-    setUser(currentUser);
-    
-    // Redirect to setup if no preferences
-    if (!currentUser.preferred_trades || !currentUser.preferred_jurisdiction) {
-      window.location.href = createPageUrl('Setup');
-    }
-  };
-
   const { data: sessions = [] } = useQuery({
     queryKey: ['sessions', user?.email],
-    queryFn: () => base44.entities.StudySession.filter({ created_by: user?.email }),
-    enabled: !!user,
+    queryFn: () => base44.entities.StudySession.filter({ created_by: user.email }),
+    enabled: !!user?.email,
   });
 
   const { data: attempts = [] } = useQuery({
     queryKey: ['attempts', user?.email],
-    queryFn: () => base44.entities.QuestionAttempt.filter({ created_by: user?.email }),
-    enabled: !!user,
+    queryFn: () => base44.entities.QuestionAttempt.filter({ created_by: user.email }),
+    enabled: !!user?.email,
   });
 
   const { data: reviewQueue = [] } = useQuery({
     queryKey: ['reviewQueue', user?.email],
-    queryFn: () => base44.entities.ReviewQueue.filter({ created_by: user?.email }),
-    enabled: !!user,
+    queryFn: () => base44.entities.ReviewQueue.filter({ created_by: user.email }),
+    enabled: !!user?.email,
   });
+
+  useEffect(() => {
+    base44.auth.me().then(currentUser => {
+      setUser(currentUser);
+      if (!currentUser.preferred_trades || !currentUser.preferred_jurisdiction) {
+        window.location.href = createPageUrl('Setup');
+      }
+    });
+  }, []);
 
   // Calculate stats
   const totalQuestions = attempts.length;
