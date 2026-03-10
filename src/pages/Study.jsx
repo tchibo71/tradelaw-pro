@@ -165,7 +165,7 @@ export default function Study() {
         sessionId: currentSession.id,
         data: { completed: true, duration_minutes: Math.floor((now - startTime) / 60000) }
       });
-      window.location.href = createPageUrl('Dashboard');
+      navigate(createPageUrl('Dashboard'));
     }
   };
 
