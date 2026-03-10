@@ -694,7 +694,8 @@ Keep explanations to 1 sentence maximum.`;
         const allExistingCitations = [...existingCitations, ...allQuestions.map(q => q.law_citation)];
         // Per-batch format counts (reset each batch)
         const batchFormatCounts = {};
-        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingCitations, ratioMap, focusArea, taxonomy, usedDimensionFacts, lastFormat, lastCogLevel, batchFormatCounts);
+        const allExistingFingerprints = [...existingFingerprints, ...allQuestions.map(q => q.legal_fact_fingerprint).filter(Boolean)];
+        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingCitations, ratioMap, focusArea, taxonomy, usedDimensionFacts, lastFormat, lastCogLevel, batchFormatCounts, allExistingFingerprints);
         const response = await callLLM(prompt);
         if (response?.questions?.length > 0) {
           const batch = response.questions.slice(0, batchCount);
