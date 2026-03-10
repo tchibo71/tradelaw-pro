@@ -1151,7 +1151,7 @@ Keep explanations to 1 sentence maximum.`;
 
             <Button
               onClick={generateQuestions}
-              disabled={selectedTrades.length === 0 || !selectedJurisdiction || generating}
+              disabled={selectedTrades.length === 0 || (jurisdictionMode === 'state' && !selectedJurisdiction) || generating}
               className="w-full h-14 text-lg bg-purple-600 hover:bg-purple-700 text-gray-900"
             >
               {generating ? (
