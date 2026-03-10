@@ -668,6 +668,10 @@ Keep explanations to 1 sentence maximum.`;
 
       // Track used dimension+fact pairs across batches to prevent same-fact repetition
       const usedDimensionFacts = {}; // { dimension: [fact, fact, ...] }
+      // Track format rotation state across batches
+      let lastFormat = null;
+      let lastCogLevel = null;
+      const globalFormatCounts = {};
 
       // Split into batches of 5 to avoid JSON truncation with large requests
       const allQuestions = [];
@@ -677,17 +681,24 @@ Keep explanations to 1 sentence maximum.`;
         const batchCount = Math.min(BATCH_SIZE, remaining);
         advanceProgress(`Generating questions (batch ${Math.ceil((questionCount - remaining) / BATCH_SIZE) + 1} of ${totalBatches})...`);
         const allExistingCitations = [...existingCitations, ...allQuestions.map(q => q.law_citation)];
-        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingCitations, ratioMap, focusArea, taxonomy, usedDimensionFacts);
+        // Per-batch format counts (reset each batch)
+        const batchFormatCounts = {};
+        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingCitations, ratioMap, focusArea, taxonomy, usedDimensionFacts, lastFormat, lastCogLevel, batchFormatCounts);
         const response = await callLLM(prompt);
         if (response?.questions?.length > 0) {
           const batch = response.questions.slice(0, batchCount);
-          // Record used dimension+fact pairs
           for (const q of batch) {
+            // Record used dimension+fact pairs
             if (q.taxonomy_dimension && q.testable_fact) {
               if (!usedDimensionFacts[q.taxonomy_dimension]) usedDimensionFacts[q.taxonomy_dimension] = [];
               usedDimensionFacts[q.taxonomy_dimension].push(q.testable_fact);
             }
+            // Track format counts
+            if (q.question_type) globalFormatCounts[q.question_type] = (globalFormatCounts[q.question_type] || 0) + 1;
           }
+          // Update last format/cog for next batch continuity
+          const lastQ = batch[batch.length - 1];
+          if (lastQ) { lastFormat = lastQ.question_type || null; lastCogLevel = lastQ.cognitive_level || null; }
           allQuestions.push(...batch);
         }
         remaining -= batchCount;
