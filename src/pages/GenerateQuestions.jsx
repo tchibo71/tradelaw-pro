@@ -577,6 +577,12 @@ FORMAT AND COGNITIVE ROTATION (MANDATORY):
 
     return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}${rotationSection}${taxonomySection}
 
+LEGAL FACT FINGERPRINT (MANDATORY for every question):
+- Set the "legal_fact_fingerprint" field to a short plain-English description of the EXACT legal fact being tested.
+- Format: "[Citation] — [specific fact]" e.g. "TN Code § 68-221-409 — minimum horizontal setback between septic tank and water well is 50 feet"
+- This must uniquely identify the precise fact. No two questions may share the same fingerprint.
+- Make it specific enough that it could NOT apply to any other question.${avoidFingerprintsSection}
+
 CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it.
 
 CRITICAL VARIETY REQUIREMENT - EACH QUESTION MUST CITE A DIFFERENT LAW:
