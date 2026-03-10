@@ -1201,7 +1201,7 @@ Keep explanations to 1 sentence maximum.`;
                           </p>
                         )}
                         <Link
-                          to={createPageUrl(`Study?trades=${encodeURIComponent(results.trades.join(','))}&jurisdiction=${encodeURIComponent(selectedJurisdiction)}`)}
+                          to={createPageUrl(`Study?trades=${encodeURIComponent(results.trades.join(','))}&jurisdiction=${encodeURIComponent(results.jurisdiction || selectedJurisdiction)}`)}
                           className="inline-block mt-3"
                         >
                           <Button className="bg-green-600 hover:bg-green-700 text-white">
