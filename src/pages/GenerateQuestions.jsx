@@ -828,9 +828,41 @@ Keep explanations to 1 sentence maximum.`;
       let lastFormat = null;
       let lastCogLevel = null;
       const allQuestions = [];
+      let exhaustedSlots = 0;
+      let culledCount = 0;
       let stepNum = 3;
 
-      // Step 5: Generate questions law by law, batch by batch
+      // Dedup sets initialized before the loop so inline validation works correctly
+      const seenCitations = new Set(existingCitations);
+      const seenFingerprints = new Set(existingFingerprints);
+
+      const isValidQuestion = (q) => {
+        if (!q.question_text || !q.correct_answer) return false;
+        if (q.legal_fact_fingerprint && seenFingerprints.has(q.legal_fact_fingerprint.trim().toLowerCase())) return false;
+        if (q.law_citation && seenCitations.has(q.law_citation)) return false;
+        const qLower = q.question_text.toLowerCase();
+        const aLower = q.correct_answer.toLowerCase().trim();
+        if (aLower.length > 2 && qLower.includes(aLower)) return false;
+        if (q.question_type === 'multiple_choice') {
+          const trimmed = q.question_text.trim();
+          if (!trimmed.includes('?') && trimmed.endsWith('.')) return false;
+        }
+        return true;
+      };
+
+      const acceptQuestion = (q) => {
+        if (q.legal_fact_fingerprint) seenFingerprints.add(q.legal_fact_fingerprint.trim().toLowerCase());
+        if (q.law_citation) seenCitations.add(q.law_citation);
+        if (q.taxonomy_dimension && q.testable_fact) {
+          if (!usedDimensionFacts[q.taxonomy_dimension]) usedDimensionFacts[q.taxonomy_dimension] = [];
+          usedDimensionFacts[q.taxonomy_dimension].push(q.testable_fact);
+        }
+        lastFormat = q.question_type || lastFormat;
+        lastCogLevel = q.cognitive_level || lastCogLevel;
+        allQuestions.push(q);
+      };
+
+      // Step 5: Generate law by law; validate inline; replace every culled slot immediately
       for (const lawEntry of allocation) {
         let lawRemaining = lawEntry.count;
         while (lawRemaining > 0) {
@@ -838,72 +870,59 @@ Keep explanations to 1 sentence maximum.`;
           stepNum++;
           setGenProgress({ current: stepNum, total: totalBatches + 3, stage: `Generating from ${lawEntry.citation} (${lawEntry.title})...` });
 
-          const allExistingCitations = [...existingCitations, ...allQuestions.map(q => q.law_citation)];
-          const allExistingFingerprints = [...existingFingerprints, ...allQuestions.map(q => q.legal_fact_fingerprint).filter(Boolean)];
-
           const prompt = buildPrompt(
             selectedTrades, effectiveJurisdiction, batchCount,
-            allExistingCitations, ratioMap, focusArea,
+            [...seenCitations], ratioMap, focusArea,
             taxonomy, usedDimensionFacts,
             lastFormat, lastCogLevel, {},
-            allExistingFingerprints,
-            lawEntry  // pin this batch to the target law
+            [...seenFingerprints],
+            lawEntry
           );
           const response = await callLLM(prompt);
-          if (response?.questions?.length > 0) {
-            const batch = response.questions.slice(0, batchCount);
-            for (const q of batch) {
-              if (q.taxonomy_dimension && q.testable_fact) {
-                if (!usedDimensionFacts[q.taxonomy_dimension]) usedDimensionFacts[q.taxonomy_dimension] = [];
-                usedDimensionFacts[q.taxonomy_dimension].push(q.testable_fact);
+          const batch = (response?.questions || []).slice(0, batchCount);
+
+          for (const q of batch) {
+            if (isValidQuestion(q)) {
+              acceptQuestion(q);
+            } else {
+              culledCount++;
+              const excludedDimension = q.taxonomy_dimension || null;
+              let replaced = false;
+
+              for (let attempt = 0; attempt < 5; attempt++) {
+                setGenProgress({ current: stepNum, total: totalBatches + 3, stage: `Replacement ${attempt + 1}/5 for ${lawEntry.citation}...` });
+                const repPrompt = buildPrompt(
+                  selectedTrades, effectiveJurisdiction, 1,
+                  [...seenCitations], ratioMap, focusArea,
+                  taxonomy, usedDimensionFacts,
+                  lastFormat, lastCogLevel, {},
+                  [...seenFingerprints],
+                  lawEntry
+                ) + (excludedDimension
+                  ? `\n\nCRITICAL: Do NOT generate a question in the "${excludedDimension}" dimension. You must choose a completely different sub-dimension and legal fact.`
+                  : '');
+                const repResponse = await callLLM(repPrompt);
+                const repQ = repResponse?.questions?.[0];
+                if (repQ && isValidQuestion(repQ)) {
+                  acceptQuestion(repQ);
+                  replaced = true;
+                  break;
+                }
+              }
+
+              if (!replaced) {
+                console.log(`taxonomy exhausted for dimension: ${excludedDimension || 'unknown'} in ${lawEntry.citation}`);
+                exhaustedSlots++;
               }
             }
-            const lastQ = batch[batch.length - 1];
-            if (lastQ) { lastFormat = lastQ.question_type || null; lastCogLevel = lastQ.cognitive_level || null; }
-            allQuestions.push(...batch);
           }
+
           lawRemaining -= batchCount;
         }
       }
 
-      // Aggressively normalize a string for comparison: lowercase, collapse whitespace, strip punctuation
-      const normalizeForMatch = (str) =>
-        (str || '')
-          .toLowerCase()
-          .replace(/[\u00a0\u2009\u202f\t]/g, ' ') // replace non-breaking & special spaces
-          .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()"']/g, '') // strip punctuation
-          .replace(/\s+/g, ' ')
-          .trim();
-
-      // Filter out duplicates (by fingerprint/intent) and malformed questions
-      const seenCitations = new Set(existingCitations);
-      const seenFingerprints = new Set(existingFingerprints);
-      const validQuestions = allQuestions.filter(q => {
-        if (!q.question_text || !q.correct_answer) return false;
-
-        // Block if this exact legal fact was already tested (intent-based dedup)
-        if (q.legal_fact_fingerprint) {
-          const fp = q.legal_fact_fingerprint.trim().toLowerCase();
-          if (seenFingerprints.has(fp)) return false;
-          seenFingerprints.add(fp);
-        }
-
-        // Block if citation already exists (secondary safety net)
-        if (q.law_citation && seenCitations.has(q.law_citation)) return false;
-        if (q.law_citation) seenCitations.add(q.law_citation);
-
-        // Block if answer is embedded in question text
-        const qLower = q.question_text.toLowerCase();
-        const aLower = q.correct_answer.toLowerCase().trim();
-        if (aLower.length > 2 && qLower.includes(aLower)) return false;
-
-        // Block malformed multiple choice (question ends with . instead of ?)
-        if (q.question_type === 'multiple_choice') {
-          const trimmed = q.question_text.trim();
-          if (!trimmed.includes('?') && trimmed.endsWith('.')) return false;
-        }
-        return true;
-      });
+      // allQuestions is already fully validated and deduplicated inline above
+      const validQuestions = allQuestions;
 
       // Create questions in database
       const questionsToCreate = validQuestions.map((q, idx) => {
