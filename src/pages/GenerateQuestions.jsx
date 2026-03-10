@@ -755,6 +755,12 @@ FORMAT AND COGNITIVE ROTATION (MANDATORY):
   - application: presents a scenario and asks what law/requirement applies
   - exception: asks who/what is exempt or excluded from a requirement
   - consequence: asks what the penalty, outcome, or legal result is for a violation or action
+  - comparative: asks how this law differs from a related law or neighboring jurisdiction's equivalent
+  - sequencing: asks in what specific order required steps must be completed
+  - actor: asks which specific party (contractor, inspector, owner, agency) is responsible for a requirement
+  - numerical: asks for an exact figure, distance, timeframe, fee, or threshold mandated by law
+  - documentation: asks which specific form, permit, or record is required and who must retain it
+  - amendment: asks what changed when this law was most recently amended (before vs. after)
 - NO two consecutive questions may share the SAME question_type AND SAME cognitive_level
 - Last question in previous batch had format="${lastFormat || 'none'}" and cognitive_level="${lastCogLevel || 'none'}" — the FIRST question of this batch must differ from at least one of these
 - Distribute evenly: aim for roughly equal spread across all 3 formats and all 4 cognitive levels
