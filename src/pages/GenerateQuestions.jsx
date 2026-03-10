@@ -549,7 +549,7 @@ Return JSON only.`,
       ? `\n\nSPECIFIC FOCUS: The user wants questions specifically about: "${focusAreaText.trim()}"\nGenerate ALL ${count} questions on this specific topic area. Explore it in depth — different laws, different code sections, different scenarios within this topic.\n`
       : '';
 
-    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}
+    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}${taxonomySection}
 
 CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it.
 
