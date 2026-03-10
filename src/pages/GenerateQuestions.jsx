@@ -952,7 +952,8 @@ Keep explanations to 1 sentence maximum.`;
         count: questionsToCreate.length,
         filteredOut,
         trades: selectedTrades,
-        lawsCovered: allocation.length
+        lawsCovered: allocation.length,
+        jurisdiction: effectiveJurisdiction
       });
     } catch (error) {
       console.error('Error generating questions:', error);
