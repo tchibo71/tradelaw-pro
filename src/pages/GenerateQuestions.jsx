@@ -796,6 +796,7 @@ Keep explanations to 1 sentence maximum.`;
     setGenerating(true);
     setResults(null);
     const BATCH_SIZE = 5;
+    let allocation = [];
 
     try {
       // Step 1: Enumerate all applicable laws
