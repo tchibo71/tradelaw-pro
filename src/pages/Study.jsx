@@ -6,7 +6,7 @@ import MultipleChoiceCard from '../components/study/MultipleChoiceCard';
 import TrueFalseCard from '../components/study/TrueFalseCard';
 import FillInBlankCard from '../components/study/FillInBlankCard';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
