@@ -432,48 +432,38 @@ Return JSON only.`,
     return map;
   };
 
+  // Normalize a fingerprint for comparison: lowercase, collapse whitespace, strip punctuation
+  const normalizeFP = (str) =>
+    (str || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
   const scanForDuplicates = async () => {
     setDeduplicating(true);
     setFlaggedDupes(null);
     setDedupeResults(null);
     try {
       const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
-      const groups = {};
+
+      // Group questions that have fingerprints by their normalized fingerprint
+      const byFingerprint = {};
       for (const q of allQuestions) {
-        const key = `${q.trade}||${q.jurisdiction}`;
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(q);
+        if (!q.legal_fact_fingerprint) continue;
+        const key = normalizeFP(q.legal_fact_fingerprint);
+        if (!byFingerprint[key]) byFingerprint[key] = [];
+        byFingerprint[key].push(q);
       }
 
       const flagged = [];
-      const alreadyFlagged = new Set();
-      for (const group of Object.values(groups)) {
+      for (const group of Object.values(byFingerprint)) {
         if (group.length < 2) continue;
-        for (let i = 0; i < group.length; i++) {
-          if (alreadyFlagged.has(group[i].id)) continue;
-          const aWords = new Set(group[i].question_text.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3));
-          for (let j = i + 1; j < group.length; j++) {
-            if (alreadyFlagged.has(group[j].id)) continue;
-            const bWords = new Set(group[j].question_text.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3));
-            const intersection = [...aWords].filter(w => bWords.has(w)).length;
-            const union = new Set([...aWords, ...bWords]).size;
-            const similarity = union > 0 ? intersection / union : 0;
-            if (similarity > 0.75) {
-              // Suggest keeping the one with a longer explanation
-              const keepI = (group[i].explanation?.length || 0) >= (group[j].explanation?.length || 0);
-              flagged.push({
-                keepQ: keepI ? group[i] : group[j],
-                removeQ: keepI ? group[j] : group[i],
-                similarity: Math.round(similarity * 100)
-              });
-              alreadyFlagged.add(keepI ? group[j].id : group[i].id);
-            }
-          }
+        // Sort so the one with the longest explanation is "kept"
+        const sorted = [...group].sort((a, b) => (b.explanation?.length || 0) - (a.explanation?.length || 0));
+        const keepQ = sorted[0];
+        for (let i = 1; i < sorted.length; i++) {
+          flagged.push({ keepQ, removeQ: sorted[i], matchReason: 'Same legal fact fingerprint' });
         }
       }
 
       setFlaggedDupes(flagged);
-      // Default: pre-select all suggested removals
       const defaults = {};
       for (const pair of flagged) defaults[pair.removeQ.id] = true;
       setDupeSelections(defaults);
