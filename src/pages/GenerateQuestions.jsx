@@ -530,6 +530,21 @@ Return JSON only.`,
       ? `\n\nCRITICAL - DO NOT CITE THESE LAWS (each question must cite a DIFFERENT law/rule, not already in this list):\n${existingCitations.slice(0, 50).map((c, i) => `${i + 1}. ${c}`).join('\n')}\n`
       : '';
 
+    // Build taxonomy guidance section
+    const taxonomySection = taxonomy.length > 0 ? (() => {
+      const dims = taxonomy.map(dim => {
+        const alreadyUsed = usedDimensionFacts[dim.dimension] || [];
+        const available = dim.testable_facts.filter(f => !alreadyUsed.includes(f));
+        return { dimension: dim.dimension, available };
+      }).filter(d => d.available.length > 0);
+
+      if (dims.length === 0) return '';
+
+      return `\n\nCOVERAGE TAXONOMY — You MUST tag each question with one taxonomy_dimension from this list. Each question must test a DIFFERENT fact. NEVER generate two questions that test the same fact in the same dimension.\n\nAvailable dimensions and unused testable facts:\n${dims.map(d =>
+        `[${d.dimension}]:\n${d.available.map(f => `  • ${f}`).join('\n')}`
+      ).join('\n\n')}\n\nFor each question, set the "taxonomy_dimension" field to exactly one of: ${dims.map(d => d.dimension).join(', ')}`;
+    })() : '';
+
     const focusSection = focusAreaText?.trim()
       ? `\n\nSPECIFIC FOCUS: The user wants questions specifically about: "${focusAreaText.trim()}"\nGenerate ALL ${count} questions on this specific topic area. Explore it in depth — different laws, different code sections, different scenarios within this topic.\n`
       : '';
