@@ -530,6 +530,10 @@ Return JSON only.`,
       ? `\n\nCRITICAL - DO NOT CITE THESE LAWS (each question must cite a DIFFERENT law/rule, not already in this list):\n${existingCitations.slice(0, 50).map((c, i) => `${i + 1}. ${c}`).join('\n')}\n`
       : '';
 
+    const avoidFingerprintsSection = existingFingerprints.length > 0
+      ? `\n\nCRITICAL - DO NOT TEST THESE LEGAL FACTS (already covered — each question must test a completely different legal fact):\n${existingFingerprints.slice(0, 80).map((f, i) => `${i + 1}. ${f}`).join('\n')}\n`
+      : '';
+
     // Build taxonomy guidance section
     const taxonomySection = taxonomy.length > 0 ? (() => {
       const dims = taxonomy.map(dim => {
