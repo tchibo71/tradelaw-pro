@@ -12,10 +12,10 @@ import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 
-const PLAN_CONCURRENCY = 8;  // laws planned in parallel
-const FILL_CONCURRENCY = 8;  // slots filled in parallel
+const PLAN_CONCURRENCY = 4;  // laws planned in parallel (Step 2)
+const FILL_CONCURRENCY = 4;  // slots filled in parallel (Step 3)
 const SLOTS_PER_LAW = 10;
-const QUESTIONS_PER_LAW = 8; // approx questions we expect per law before needing more
+const QUESTIONS_PER_LAW = 8;
 
 const TRADES = [
   "General Contractor", "Building Contractor", "Residential Builder", "Commercial Builder", "Remodeling Contractor",
