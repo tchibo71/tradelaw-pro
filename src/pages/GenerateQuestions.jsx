@@ -1364,12 +1364,17 @@ Keep explanations to 1 sentence maximum.`;
                         </p>
                         <p className="text-sm text-green-800">
                           Questions added for {results.trades?.join(', ')} ({jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction})
-                          {results.lawsCovered > 0 && ` — covering ${results.lawsCovered} distinct laws`}
+                          {results.lawsCovered > 0 && ` — ${results.lawsCovered} laws identified`}
                         </p>
+                        {results.totalSlotsPlanned > 0 && (
+                          <p className="text-xs text-blue-700 mt-1">
+                            📋 Master plan: {results.totalSlotsPlanned} pre-defined slots ({results.openSlotsAvailable} open) — {results.count} filled this run.
+                          </p>
+                        )}
                         {results.filteredOut > 0 && (
                           <p className="text-xs text-amber-700 mt-1">
-                            ⚠ {results.filteredOut} culled question{results.filteredOut !== 1 ? 's' : ''} triggered replacement attempts.
-                            {results.exhaustedSlots > 0 && ` ${results.exhaustedSlots} slot${results.exhaustedSlots !== 1 ? 's' : ''} could not be replaced (taxonomy exhausted).`}
+                            ⚠ {results.filteredOut} slot{results.filteredOut !== 1 ? 's' : ''} required retries.
+                            {results.exhaustedSlots > 0 && ` ${results.exhaustedSlots} slot${results.exhaustedSlots !== 1 ? 's' : ''} could not be filled.`}
                           </p>
                         )}
                         <Link
