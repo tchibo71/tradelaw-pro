@@ -710,7 +710,16 @@ FORMAT AND COGNITIVE ROTATION (MANDATORY):
 - Set "cognitive_level" field on every question`;
 
 
-    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}${rotationSection}${taxonomySection}
+    const targetLawSection = targetLaw
+      ? `\n\nTARGET LAW (MANDATORY — ALL ${count} questions in this batch MUST come from THIS specific law only):
+Citation: ${targetLaw.citation}
+Title: ${targetLaw.title}
+Type: ${targetLaw.law_type}
+
+Every question must cite a different section or sub-provision WITHIN this law. Do NOT generate questions from any other law in this batch. If this law has many sections, explore each subsection/paragraph separately. Set law_citation to the specific sub-section within this law.\n`
+      : '';
+
+    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${targetLawSection}${focusSection}${rotationSection}${taxonomySection}
 
 LEGAL FACT FINGERPRINT (MANDATORY for every question):
 - Set the "legal_fact_fingerprint" field to a short plain-English description of the EXACT legal fact being tested.
