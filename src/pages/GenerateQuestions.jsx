@@ -602,7 +602,9 @@ Keep explanations to 1 sentence maximum.`;
                 law_type: { type: "string" },
                 law_citation: { type: "string" },
                 explanation: { type: "string" },
-                difficulty: { type: "string" }
+                difficulty: { type: "string" },
+                taxonomy_dimension: { type: "string" },
+                testable_fact: { type: "string" }
               }
             }
           }
