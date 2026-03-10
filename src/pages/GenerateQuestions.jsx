@@ -571,7 +571,7 @@ FORMAT AND COGNITIVE ROTATION (MANDATORY):
 - Set "cognitive_level" field on every question`;
 
 
-    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}${taxonomySection}
+    return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}${rotationSection}${taxonomySection}
 
 CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it.
 
