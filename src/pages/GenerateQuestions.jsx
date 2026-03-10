@@ -991,17 +991,17 @@ Keep explanations to 1 sentence maximum.`;
       if (laws.length === 0) throw new Error('Could not enumerate applicable laws. Try again or check your trade/jurisdiction selection.');
       if (lawRegistry.length === 0) setLawRegistry(laws);
 
-      // ── Phase 2: Build Master Plan (25 pre-defined slots per law) ────────────
-      setGenProgress({ current: 0, total: laws.length, stage: `Building master question plan (25 slots × ${laws.length} laws = ${laws.length * 25} total slots)...` });
+      // ── Phases 2 + 3 in parallel: Master Plan + existing catalogue ──────────
+      setGenProgress({ current: 0, total: laws.length, stage: `Building master plan (${laws.length * 25} slots) and loading catalogue in parallel...` });
 
-      const masterSlots = await buildMasterPlan(laws, effectiveJurisdiction, selectedTrades,
-        (current, total, stage) => setGenProgress({ current, total, stage })
-      );
+      const [masterSlots, existingQuestions] = await Promise.all([
+        buildMasterPlan(laws, effectiveJurisdiction, selectedTrades,
+          (current, total, stage) => setGenProgress({ current, total, stage })
+        ),
+        base44.entities.LawQuestion.filter({ jurisdiction: effectiveJurisdiction })
+      ]);
       setMasterPlanData(masterSlots);
 
-      // ── Phase 3: Fetch existing questions to seed dedup sets ─────────────────
-      setGenProgress({ current: 0, total: 1, stage: 'Loading existing question catalogue for deduplication...' });
-      const existingQuestions = await base44.entities.LawQuestion.filter({ jurisdiction: effectiveJurisdiction });
       const relevantExisting = existingQuestions.filter(q => selectedTrades.some(t => q.trade === t));
       const seenCitations = new Set(relevantExisting.map(q => q.law_citation).filter(Boolean));
       const seenFingerprints = new Set(
