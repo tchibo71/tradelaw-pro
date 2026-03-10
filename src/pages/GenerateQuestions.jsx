@@ -633,9 +633,15 @@ For each law: citation (exact), title (short), law_type ("statute" or "regulatio
     return shuffled.slice(0, Math.min(count, areas.length));
   };
 
-  // Build a coverage taxonomy: dimensions -> testable facts, fresh per trade/focus selection.
-  // Always appends the 6 mandatory extra dimensions.
-  const fetchTaxonomy = async (trades, jurisdiction, focusAreaText) => {
+  // fetchTaxonomy removed — replaced by buildMasterPlan
+  // fetchStatuteRegRatio removed — no longer needed
+  // computeLawAllocation removed — replaced by slot-based planning
+  // buildPrompt removed — replaced by buildSlotFillPrompt
+
+  const callLLM_PLACEHOLDER = null; // anchor
+
+  // fetchTaxonomy was here
+  const _fetchTaxonomy_REMOVED = async (trades, jurisdiction, focusAreaText) => {
     const isFocused = !!focusAreaText?.trim();
 
     const extraDimensionPrompt = `
