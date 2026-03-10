@@ -470,8 +470,10 @@ Return a JSON object with a "results" array, one entry per question in the same 
     setSelectedTrades(prev => prev.filter(t => t !== trade));
   };
 
-  const DEAD_REGULATORY_AREAS = {
-      'soil evaluation and site assessment requirements', 'setback distances from water sources, property lines, wells, and structures',
+  // REGULATORY_AREAS removed — no longer used.
+
+  const normalizeFP_placeholder = null;
+
       'system sizing calculations and design criteria', 'installation depth and cover requirements',
       'inspection and approval process before backfilling', 'permit application and fee requirements',
       'prohibited installation areas (flood zones, steep slopes, unsuitable soils)', 'gravity vs pressure distribution systems',
