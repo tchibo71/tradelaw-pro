@@ -11,6 +11,7 @@ import { createPageUrl } from '../utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Study() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [currentSession, setCurrentSession] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
