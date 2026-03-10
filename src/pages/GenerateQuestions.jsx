@@ -931,7 +931,7 @@ Keep explanations to 1 sentence maximum.`;
           correct_answer: correctAnswer,
           options,
           trade: assignedTrade,
-          jurisdiction: selectedJurisdiction,
+          jurisdiction: effectiveJurisdiction,
           law_type: q.law_type,
           law_citation: q.law_citation,
           legal_fact_fingerprint: q.legal_fact_fingerprint?.trim() || null,
