@@ -669,13 +669,13 @@ Keep explanations to 1 sentence maximum.`;
         fetchStatuteRegRatio(selectedTrades, selectedJurisdiction)
       ]);
 
-      // Fetch existing questions to avoid duplicate citations
+      // Fetch existing questions to avoid duplicate citations and fingerprints
       const existingQuestions = await base44.entities.LawQuestion.filter({
         jurisdiction: selectedJurisdiction
       });
-      const existingCitations = existingQuestions
-        .filter(q => selectedTrades.some(t => q.trade === t))
-        .map(q => q.law_citation).filter(Boolean);
+      const relevantExisting = existingQuestions.filter(q => selectedTrades.some(t => q.trade === t));
+      const existingCitations = relevantExisting.map(q => q.law_citation).filter(Boolean);
+      const existingFingerprints = relevantExisting.map(q => q.legal_fact_fingerprint).filter(Boolean);
 
       // Track used dimension+fact pairs across batches to prevent same-fact repetition
       const usedDimensionFacts = {}; // { dimension: [fact, fact, ...] }
