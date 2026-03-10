@@ -119,6 +119,9 @@ export default function GenerateQuestions() {
   const [focusArea, setFocusArea] = useState('');
   const [tradeSearch, setTradeSearch] = useState('');
   const [showTradeDropdown, setShowTradeDropdown] = useState(false);
+  const [jurisdictionMode, setJurisdictionMode] = useState('state'); // 'state' | 'federal'
+  const [lawRegistry, setLawRegistry] = useState([]); // enumerated laws for current selection
+  const [lawRegistryLoading, setLawRegistryLoading] = useState(false);
   const [deduplicating, setDeduplicating] = useState(false);
   const [dedupeResults, setDedupeResults] = useState(null);
   const [flaggedDupes, setFlaggedDupes] = useState(null); // [{keepQ, removeQ, similarity}]
