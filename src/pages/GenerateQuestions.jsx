@@ -743,7 +743,7 @@ Return every law you can find. Aim for completeness — it is better to include 
 
     // Format + cognitive rotation constraints
     const formats = ['multiple_choice', 'true_false', 'fill_in_blank'];
-    const cogLevels = ['recall', 'application', 'exception', 'consequence'];
+    const cogLevels = ['recall', 'application', 'exception', 'consequence', 'comparative', 'sequencing', 'actor', 'numerical', 'documentation', 'amendment'];
     const maxPerFormat = count <= 5 ? 2 : Math.floor(count * 0.4); // max 2 per format in batch of 5, 40% in larger batches
     const blockedFormats = formats.filter(f => (formatCounts[f] || 0) >= maxPerFormat);
     const rotationSection = `
