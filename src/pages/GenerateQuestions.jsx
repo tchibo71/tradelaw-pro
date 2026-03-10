@@ -66,11 +66,90 @@ const normalizeForMatch = (str) =>
 const normalizeFP = (str) =>
   (str || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
-// ─── LLM helpers ────────────────────────────────────────────────────────────
+// ─── Pipeline step helpers ───────────────────────────────────────────────────
 
-const callLLM = (prompt) =>
+// STEP 1 ONLY — web search enabled here and nowhere else
+const step1EnumerateLaws = (trades, jurisdiction, mode) => {
+  const scope = mode === 'federal'
+    ? 'FEDERAL law only (OSHA, EPA, DOT, FTC etc). Do NOT include state laws.'
+    : `${jurisdiction} STATE law only. Do NOT include federal laws.`;
+  return base44.integrations.Core.InvokeLLM({
+    prompt: `List applicable laws and regulations for these licensed trades in scope: ${scope}
+Trades: ${trades.join(', ')}
+Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties.
+For each: citation (exact), title (short), law_type ("statute"|"regulation"), trade (one of the input trade names).`,
+    add_context_from_internet: true,
+    model: "gemini_3_flash",
+    response_json_schema: {
+      type: "object",
+      properties: {
+        laws: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              citation: { type: "string" },
+              title: { type: "string" },
+              law_type: { type: "string" },
+              trade: { type: "string" }
+            }
+          }
+        }
+      }
+    }
+  });
+};
+
+// STEP 2 — web search OFF, uses only law name/citation as context
+const step2PlanSlots = (law, jurisdiction, trades) =>
   base44.integrations.Core.InvokeLLM({
-    prompt,
+    prompt: `Pre-define ${SLOTS_PER_LAW} unique exam question slots for this law.
+Law: ${law.citation} — ${law.title} (${law.law_type})
+Jurisdiction: ${jurisdiction}, Trade(s): ${trades.join(', ')}
+Dimensions to cover: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing
+Per slot: dimension, legal_fact_fingerprint ("[Citation] — [specific fact]"), question_hint (one line), suggested_format (multiple_choice|true_false|fill_in_blank)`,
+    add_context_from_internet: false,
+    model: "gemini_3_flash",
+    response_json_schema: {
+      type: "object",
+      properties: {
+        slots: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              dimension: { type: "string" },
+              legal_fact_fingerprint: { type: "string" },
+              question_hint: { type: "string" },
+              suggested_format: { type: "string" }
+            }
+          }
+        }
+      }
+    }
+  });
+
+// STEP 3 — web search OFF, uses only slot fingerprint + law name as context
+const step3FillSlot = (slot, jurisdiction, trades, existingFingerprints) => {
+  const fpList = existingFingerprints.length > 0
+    ? `\nDO NOT test these already-covered facts:\n${existingFingerprints.slice(0, 40).map((f, i) => `${i + 1}. ${f}`).join('\n')}\n`
+    : '';
+  return base44.integrations.Core.InvokeLLM({
+    prompt: `Generate exactly 1 professional licensing exam question for ${trades.join(', ')} in ${jurisdiction}.
+Law: ${slot.law_citation} — ${slot.law_title} (${slot.law_type})
+Dimension: ${slot.dimension}
+Legal fact to test: ${slot.legal_fact_fingerprint}
+Hint: ${slot.question_hint}
+Format: ${slot.suggested_format}
+${fpList}
+Rules:
+- legal_fact_fingerprint MUST be: "${slot.legal_fact_fingerprint}"
+- law_type: "${slot.law_type}"
+- For MC: 4 options, correct_answer matches one word-for-word
+- For T/F: correct_answer is exactly "True" or "False"
+- For fill_in_blank: use _____, never reveal answer in question text
+- NEVER embed the answer in the question text
+- 1-sentence explanation only`,
     add_context_from_internet: false,
     model: "gemini_3_flash",
     response_json_schema: {
@@ -97,120 +176,6 @@ const callLLM = (prompt) =>
       }
     }
   });
-
-const fetchApplicableLaws = async (trades, jurisdiction, mode) => {
-  const scope = mode === 'federal'
-    ? 'FEDERAL law only (OSHA, EPA, DOT, FTC etc). Do NOT include state laws.'
-    : `${jurisdiction} STATE law only. Do NOT include federal laws.`;
-
-  const schema = {
-    type: "object",
-    properties: {
-      laws: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            citation: { type: "string" },
-            title: { type: "string" },
-            law_type: { type: "string" },
-            trade: { type: "string" }
-          }
-        }
-      }
-    }
-  };
-
-  // Batch trades 3 at a time to avoid 502 timeouts
-  const BATCH = 3;
-  const batches = [];
-  for (let i = 0; i < trades.length; i += BATCH) batches.push(trades.slice(i, i + BATCH));
-
-  const batchResults = await Promise.all(batches.map(batch =>
-    base44.integrations.Core.InvokeLLM({
-      prompt: `List applicable laws and regulations for these licensed trades in scope: ${scope}
-Trades: ${batch.join(', ')}
-Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties.
-For each: citation (exact), title (short), law_type ("statute"|"regulation"), trade (one of the input names).`,
-      add_context_from_internet: true,
-      model: "gemini_3_flash",
-      response_json_schema: schema
-    }).then(r => r?.laws || []).catch(() => [])
-  ));
-
-  return batchResults.flat();
-};
-
-const planSingleLaw = async (law, jurisdiction, trades) => {
-  const result = await base44.integrations.Core.InvokeLLM({
-    prompt: `Pre-define exactly ${SLOTS_PER_LAW} unique question slots for this law.
-Law: ${law.citation} — ${law.title} (${law.law_type})
-Jurisdiction: ${jurisdiction}, Trade(s): ${trades.join(', ')}
-
-Use varied dimensions: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing
-
-Per slot output: dimension, legal_fact_fingerprint ("[Citation] — [specific fact]"), question_hint (one line), suggested_format (multiple_choice|true_false|fill_in_blank)`,
-    add_context_from_internet: false,
-    model: "gemini_3_flash",
-    response_json_schema: {
-      type: "object",
-      properties: {
-        slots: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              dimension: { type: "string" },
-              legal_fact_fingerprint: { type: "string" },
-              question_hint: { type: "string" },
-              suggested_format: { type: "string" }
-            }
-          }
-        }
-      }
-    }
-  });
-
-  return (result?.slots || []).slice(0, SLOTS_PER_LAW).map(slot => ({
-    ...slot,
-    law_citation: law.citation,
-    law_title: law.title,
-    law_type: law.law_type,
-    trade: law.trade || trades[0],
-  }));
-};
-
-const buildSlotFillPrompt = (slot, jurisdiction, trades, existingFingerprints, existingCitations) => {
-  const fpList = existingFingerprints.length > 0
-    ? `\nDO NOT test these already-covered facts:\n${existingFingerprints.slice(0, 60).map((f, i) => `${i + 1}. ${f}`).join('\n')}\n`
-    : '';
-
-  const dimGuidance = {
-    comparative: 'Ask how this law differs from a related law, prior version, or another state\'s equivalent.',
-    sequencing: 'Ask the exact required order of mandatory steps.',
-    actor_responsibility: 'Ask which specific party (contractor, inspector, owner, agency) bears legal responsibility.',
-    numerical_precision: 'Ask for an exact mandated number (distance, fee, timeframe, threshold).',
-    forms_and_documentation: 'Ask which specific named form/permit is required, who completes it, and how long it\'s retained.',
-    change_over_time: 'Ask what this law required BEFORE its most recent amendment vs. NOW.',
-  }[slot.dimension] || '';
-
-  return `Generate exactly 1 professional licensing exam question for ${trades.join(', ')} in ${jurisdiction}.
-
-Slot specification:
-- Law: ${slot.law_citation} (${slot.law_title})
-- Dimension: ${slot.dimension}${dimGuidance ? `\n- Dimension guidance: ${dimGuidance}` : ''}
-- Legal fact: ${slot.legal_fact_fingerprint}
-- Hint: ${slot.question_hint}
-- Format: ${slot.suggested_format}
-${fpList}
-Rules:
-- legal_fact_fingerprint MUST be: "${slot.legal_fact_fingerprint}"
-- law_type: "${slot.law_type}"
-- For MC: 4 options, correct_answer matches one word-for-word
-- For T/F: correct_answer is exactly "True" or "False"
-- For fill_in_blank: use _____, never reveal answer in question text
-- NEVER embed the answer in the question text
-- 1-sentence explanation only`;
 };
 
 export default function GenerateQuestions() {
@@ -222,7 +187,7 @@ export default function GenerateQuestions() {
   const [selectedJurisdiction, setSelectedJurisdiction] = useState(prefillJurisdiction);
   const [questionCount, setQuestionCount] = useState(5);
   const [generating, setGenerating] = useState(false);
-  const [genProgress, setGenProgress] = useState({ current: 0, total: 0, stage: '' });
+  const [genProgress, setGenProgress] = useState({ step: 0, current: 0, total: 0, stage: '' });
   const [results, setResults] = useState(null);
   const [focusArea, setFocusArea] = useState('');
   const [tradeSearch, setTradeSearch] = useState('');
@@ -257,24 +222,7 @@ export default function GenerateQuestions() {
 
   const removeTrade = (trade) => setSelectedTrades(prev => prev.filter(t => t !== trade));
 
-  // ─── Master Plan (only plan as many laws as needed) ──────────────────────
-  const buildMasterPlan = async (laws, jurisdiction, trades, questionCount, onProgress) => {
-    // Only plan enough laws to cover questionCount with 2x headroom
-    const lawsNeeded = Math.max(1, Math.ceil(questionCount / QUESTIONS_PER_LAW));
-    const lawsToProcess = laws.slice(0, lawsNeeded);
 
-    const allSlots = [];
-    let completed = 0;
-
-    for (let i = 0; i < lawsToProcess.length; i += PLAN_CONCURRENCY) {
-      const batch = lawsToProcess.slice(i, i + PLAN_CONCURRENCY);
-      onProgress(completed, lawsToProcess.length, `Planning ${batch.length} law${batch.length > 1 ? 's' : ''} in parallel (${completed}/${lawsToProcess.length})...`);
-      const batchResults = await Promise.all(batch.map(law => planSingleLaw(law, jurisdiction, trades)));
-      for (const slots of batchResults) allSlots.push(...slots);
-      completed += batch.length;
-    }
-    return allSlots;
-  };
 
   const isValidQuestion = (q, fps) => {
     if (!q.question_text || !q.correct_answer) return false;
