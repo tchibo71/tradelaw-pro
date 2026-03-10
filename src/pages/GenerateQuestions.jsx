@@ -706,6 +706,24 @@ Return every law you can find. Aim for completeness — it is better to include 
 
       if (dims.length === 0) return '';
 
+      const extraDimKeys = EXTRA_DIMENSIONS.map(d => d.key);
+      const extraDims = dims.filter(d => extraDimKeys.includes(d.dimension));
+      const coreDims = dims.filter(d => !extraDimKeys.includes(d.dimension));
+
+      // Count how many questions have already been accepted for each extra dimension in this law
+      const extraDimCoverage = extraDimKeys.map(key => {
+        const accepted = (usedDimensionFacts[key] || []).length;
+        const dim = dims.find(d => d.dimension === key);
+        return { key, accepted, hasAvailable: dim && dim.available.length > 0 };
+      }).filter(d => d.hasAvailable && d.accepted < 3);
+
+      const mandatoryNote = extraDimCoverage.length > 0
+        ? `\n\nMANDATORY EXTRA DIMENSIONS — Each law must contribute at least 3 questions per dimension below. The following dimensions are still below their 3-question minimum and MUST be prioritized:\n${extraDimCoverage.map(d => {
+            const meta = EXTRA_DIMENSIONS.find(e => e.key === d.key);
+            return `  • ${d.key} (${d.accepted}/3 so far): ${meta?.description || ''}\n    Example question style: "${meta?.example || ''}"`;
+          }).join('\n')}`
+        : '';
+
       const coverageRule = isFocused
         ? `MANDATORY SUB-DIMENSION COVERAGE RULES (focus mode — minimum 15 unique questions before repeats):
 1. You MUST generate at least one question per sub-dimension listed below before revisiting any sub-dimension.
@@ -714,7 +732,7 @@ Return every law you can find. Aim for completeness — it is better to include 
 4. Tag each question with the exact "taxonomy_dimension" it belongs to.`
         : `COVERAGE TAXONOMY — You MUST tag each question with one taxonomy_dimension from this list. Each question must test a DIFFERENT fact. NEVER generate two questions that test the same fact in the same dimension.`;
 
-      return `\n\n${coverageRule}\n\nAvailable sub-dimensions and unused testable facts:\n${dims.map(d =>
+      return `\n\n${coverageRule}${mandatoryNote}\n\nAvailable sub-dimensions and unused testable facts:\n${dims.map(d =>
         `[${d.dimension}] (${d.available.length} unused facts):\n${d.available.map(f => `  • ${f}`).join('\n')}`
       ).join('\n\n')}\n\nFor each question, set the "taxonomy_dimension" field to exactly one of: ${dims.map(d => d.dimension).join(', ')}`;
     })() : '';
