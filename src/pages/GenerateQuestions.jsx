@@ -1004,7 +1004,7 @@ Keep explanations to 1 sentence maximum.`;
             {/* Deduplicate questions */}
             <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
               <p className="text-sm font-semibold text-blue-900 mb-2">🔍 Find Duplicate Questions</p>
-              <p className="text-xs text-blue-800 mb-3">Scans your catalogue for near-identical questions and shows them to you before anything is deleted.</p>
+              <p className="text-xs text-blue-800 mb-3">Scans your catalogue for questions that test the same legal fact (by fingerprint), regardless of wording, and shows them before anything is deleted.</p>
               <Button
                 onClick={scanForDuplicates}
                 disabled={deduplicating}
