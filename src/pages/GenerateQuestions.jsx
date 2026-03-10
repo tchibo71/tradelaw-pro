@@ -14,7 +14,7 @@ import { createPageUrl } from '../utils';
 
 const PLAN_CONCURRENCY = 8;  // laws planned in parallel
 const FILL_CONCURRENCY = 8;  // slots filled in parallel
-const SLOTS_PER_LAW = 25;
+const SLOTS_PER_LAW = 10;
 const QUESTIONS_PER_LAW = 8; // approx questions we expect per law before needing more
 
 const TRADES = [
@@ -143,14 +143,14 @@ For each: citation (exact), title (short), law_type ("statute"|"regulation"), tr
 
 const planSingleLaw = async (law, jurisdiction, trades) => {
   const result = await base44.integrations.Core.InvokeLLM({
-    prompt: `Pre-define exactly ${SLOTS_PER_LAW} unique question slots for this law, covering all 15 dimensions:
+    prompt: `Pre-define exactly ${SLOTS_PER_LAW} unique question slots for this law.
 Law: ${law.citation} — ${law.title} (${law.law_type})
 Jurisdiction: ${jurisdiction}, Trade(s): ${trades.join(', ')}
 
-Dimensions (use each at least once): definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, enforcement_mechanisms, comparative, sequencing, actor_responsibility, numerical_precision, forms_and_documentation, change_over_time
+Use varied dimensions: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing
 
-Per slot: dimension, legal_fact_fingerprint ("[Citation] — [specific fact]"), question_hint (one line), suggested_format (multiple_choice|true_false|fill_in_blank)`,
-    add_context_from_internet: true,
+Per slot output: dimension, legal_fact_fingerprint ("[Citation] — [specific fact]"), question_hint (one line), suggested_format (multiple_choice|true_false|fill_in_blank)`,
+    add_context_from_internet: false,
     model: "gemini_3_flash",
     response_json_schema: {
       type: "object",
