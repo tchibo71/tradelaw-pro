@@ -1192,7 +1192,8 @@ Keep explanations to 1 sentence maximum.`;
                           Successfully generated {results.count} questions!
                         </p>
                         <p className="text-sm text-green-800">
-                          Questions added for {results.trades?.join(', ')} ({selectedJurisdiction})
+                          Questions added for {results.trades?.join(', ')} ({jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction})
+                          {results.lawsCovered > 0 && ` — covering ${results.lawsCovered} distinct laws`}
                         </p>
                         {results.filteredOut > 0 && (
                           <p className="text-xs text-amber-700 mt-1">
