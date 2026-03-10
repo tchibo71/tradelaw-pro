@@ -562,35 +562,6 @@ For each law: citation (exact), title (short), law_type ("statute" or "regulatio
     return result?.laws || [];
   };
 
-
-      'pumping frequency requirements by system type and size', 'manifest and waste tracking documentation',
-      'disposal site permit requirements', 'vehicle and equipment standards',
-      'prohibited disposal locations', 'spill response and reporting requirements',
-      'license application and examination requirements', 'background check requirements',
-      'waste transport route restrictions', 'emergency pumping procedures',
-      'inspection duties during pumping', 'reporting failing systems to authorities',
-      'grease trap and commercial system pumping differences', 'record retention periods'
-    ],
-    'Septic System Designer': [
-      'soil scientist vs engineer design authority', 'site evaluation report requirements',
-      'design criteria for different soil types', 'alternative system design approval process',
-      'engineered system stamping requirements', 'design life expectancy standards',
-      'loading rate calculations', 'reserve area requirements',
-      'mound system design specifications', 'drip irrigation system design rules',
-      'nitrogen reduction system requirements', 'design submission and review timeline',
-      'design changes during installation', 'as-built certification responsibilities'
-    ],
-    'Septic System Inspector': [
-      'inspection checklist requirements', 'point-of-sale inspection requirements',
-      'inspector certification vs contractor license', 'reporting responsibilities for failing systems',
-      'access requirements for inspections', 'documentation and report format',
-      'third-party inspector qualifications', 'conflict of interest restrictions',
-      'follow-up inspection requirements after repairs', 'inspection frequency for commercial systems'
-    ],
-  };
-
-  // REGULATORY_AREAS kept above for reference. getRandomAreas removed (unused).
-
   const callLLM = async (prompt) => {
     return base44.integrations.Core.InvokeLLM({
       prompt,
