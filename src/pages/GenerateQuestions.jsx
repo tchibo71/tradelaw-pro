@@ -1025,7 +1025,7 @@ Keep explanations to 1 sentence maximum.`;
                         {flaggedDupes.map((pair, idx) => (
                           <div key={pair.removeQ.id} className="bg-white border border-blue-200 rounded-lg p-3 text-xs space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="font-semibold text-blue-800">Pair #{idx + 1} — {pair.similarity}% similar</span>
+                              <span className="font-semibold text-blue-800">Pair #{idx + 1} — {pair.matchReason || `${pair.similarity}% similar`}</span>
                             </div>
                             <div className="bg-green-50 border border-green-200 rounded p-2">
                               <span className="text-green-700 font-semibold">KEEP: </span>
