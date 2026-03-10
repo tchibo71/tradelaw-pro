@@ -786,6 +786,7 @@ Keep explanations to 1 sentence maximum.`;
           jurisdiction: selectedJurisdiction,
           law_type: q.law_type,
           law_citation: q.law_citation,
+          legal_fact_fingerprint: q.legal_fact_fingerprint?.trim() || null,
           explanation: q.explanation,
           difficulty: q.difficulty
         };
