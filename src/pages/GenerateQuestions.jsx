@@ -637,7 +637,8 @@ Keep explanations to 1 sentence maximum.`;
                 difficulty: { type: "string" },
                 taxonomy_dimension: { type: "string" },
                 testable_fact: { type: "string" },
-                cognitive_level: { type: "string" }
+                cognitive_level: { type: "string" },
+                legal_fact_fingerprint: { type: "string" }
               }
             }
           }
