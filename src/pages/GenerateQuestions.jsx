@@ -244,40 +244,59 @@ export default function GenerateQuestions() {
     try {
       const effectiveJurisdiction = jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction;
 
-      // Phase 1: Enumerate laws (use cache if available)
-      setGenProgress({ current: 0, total: 1, stage: `Enumerating ${effectiveJurisdiction} laws...` });
-      let laws = lawRegistry.length > 0
-        ? lawRegistry
-        : await fetchApplicableLaws(selectedTrades, effectiveJurisdiction, jurisdictionMode);
-      if (laws.length === 0) throw new Error('Could not enumerate applicable laws. Try again or check your selection.');
+      // ── STEP 1: Enumerate laws (web search ON — only time it fires) ──────────
+      setGenProgress({ step: 1, current: 0, total: 1, stage: `Step 1 of 3: Enumerating ${effectiveJurisdiction} laws (web search)...` });
+      let laws = lawRegistry.length > 0 ? lawRegistry : null;
+      if (!laws) {
+        const r1 = await step1EnumerateLaws(selectedTrades, effectiveJurisdiction, jurisdictionMode);
+        laws = r1?.laws || [];
+      }
+      if (laws.length === 0) throw new Error('Step 1 failed: Could not enumerate applicable laws.');
       if (lawRegistry.length === 0) setLawRegistry(laws);
 
-      // Phase 2: Build master plan + load existing catalogue IN PARALLEL
-      setGenProgress({ current: 0, total: laws.length, stage: 'Building question plan and loading catalogue...' });
-
-      const [masterSlots, existingQuestions] = await Promise.all([
-        buildMasterPlan(laws, effectiveJurisdiction, selectedTrades, questionCount,
-          (current, total, stage) => setGenProgress({ current, total, stage })
-        ),
-        base44.entities.LawQuestion.filter({ jurisdiction: effectiveJurisdiction })
-      ]);
-      setMasterPlanData(masterSlots);
-
+      // Load existing catalogue while we move to step 2
+      const existingQuestions = await base44.entities.LawQuestion.filter({ jurisdiction: effectiveJurisdiction });
       const relevantExisting = existingQuestions.filter(q => selectedTrades.some(t => q.trade === t));
-      const seenCitations = new Set(relevantExisting.map(q => q.law_citation).filter(Boolean));
       const seenFingerprints = new Set(
         relevantExisting.map(q => q.legal_fact_fingerprint).filter(Boolean).map(f => f.trim().toLowerCase())
       );
 
-      // Phase 3: Select open slots
-      const openSlots = masterSlots.filter(slot =>
+      // ── STEP 2: Plan slots for each law (web search OFF) ─────────────────────
+      const lawsNeeded = Math.max(1, Math.ceil(questionCount / QUESTIONS_PER_LAW));
+      const lawsToProcess = laws.slice(0, lawsNeeded);
+      const allSlots = [];
+
+      for (let i = 0; i < lawsToProcess.length; i += PLAN_CONCURRENCY) {
+        const batch = lawsToProcess.slice(i, i + PLAN_CONCURRENCY);
+        setGenProgress({
+          step: 2,
+          current: i,
+          total: lawsToProcess.length,
+          stage: `Step 2 of 3: Planning slots for law${batch.length > 1 ? 's' : ''} ${i + 1}–${Math.min(i + batch.length, lawsToProcess.length)} of ${lawsToProcess.length} (no web search)...`
+        });
+        const batchResults = await Promise.all(batch.map(law => step2PlanSlots(law, effectiveJurisdiction, selectedTrades)));
+        for (let j = 0; j < batch.length; j++) {
+          const law = batch[j];
+          const slots = (batchResults[j]?.slots || []).slice(0, SLOTS_PER_LAW).map(slot => ({
+            ...slot,
+            law_citation: law.citation,
+            law_title: law.title,
+            law_type: law.law_type,
+            trade: law.trade || selectedTrades[0],
+          }));
+          allSlots.push(...slots);
+        }
+      }
+      setMasterPlanData(allSlots);
+
+      const openSlots = allSlots.filter(slot =>
         !slot.legal_fact_fingerprint ||
         !seenFingerprints.has(slot.legal_fact_fingerprint.trim().toLowerCase())
       );
       const slotsToFill = openSlots.slice(0, questionCount);
-      if (slotsToFill.length === 0) throw new Error('All pre-planned slots are already covered. Generate for a different trade or jurisdiction.');
+      if (slotsToFill.length === 0) throw new Error('All planned slots are already covered. Generate for a different trade or jurisdiction.');
 
-      // Phase 4: Fill slots in parallel batches
+      // ── STEP 3: Fill each slot (web search OFF) ───────────────────────────────
       const allQuestions = [];
       let culledCount = 0;
       let exhaustedSlots = 0;
@@ -285,32 +304,24 @@ export default function GenerateQuestions() {
 
       for (let i = 0; i < slotsToFill.length; i += FILL_CONCURRENCY) {
         const batch = slotsToFill.slice(i, i + FILL_CONCURRENCY);
-        const fpSnapshot = new Set(seenFingerprints);
-        const citSnapshot = new Set(seenCitations);
-
+        const fpSnapshot = [...seenFingerprints];
         setGenProgress({
+          step: 3,
           current: filledCount,
           total: slotsToFill.length,
-          stage: `Filling ${batch.length} slot${batch.length > 1 ? 's' : ''} in parallel (${filledCount}/${slotsToFill.length})...`
+          stage: `Step 3 of 3: Generating questions ${filledCount + 1}–${Math.min(filledCount + batch.length, slotsToFill.length)} of ${slotsToFill.length} (no web search)...`
         });
 
         const batchResults = await Promise.all(batch.map(async (slot) => {
-          const prompt = buildSlotFillPrompt(slot, effectiveJurisdiction, selectedTrades, [...fpSnapshot], [...citSnapshot]);
-          const response = await callLLM(prompt);
-          const q = response?.questions?.[0];
-          if (q && isValidQuestion(q, fpSnapshot)) return { slot, q };
-          // Single retry
-          const retry = await callLLM(prompt);
-          const rq = retry?.questions?.[0];
-          if (rq && isValidQuestion(rq, fpSnapshot)) return { slot, q: rq, retried: true };
+          const resp = await step3FillSlot(slot, effectiveJurisdiction, selectedTrades, fpSnapshot);
+          const q = resp?.questions?.[0];
+          if (q && isValidQuestion(q, new Set(seenFingerprints))) return { slot, q };
           return { slot, q: null };
         }));
 
-        for (const { slot, q, retried } of batchResults) {
+        for (const { slot, q } of batchResults) {
           if (q) {
-            if (retried) culledCount++;
             if (q.legal_fact_fingerprint) seenFingerprints.add(q.legal_fact_fingerprint.trim().toLowerCase());
-            if (q.law_citation) seenCitations.add(q.law_citation);
             allQuestions.push({ q, slot });
           } else {
             culledCount++;
@@ -320,10 +331,10 @@ export default function GenerateQuestions() {
         }
       }
 
-      if (allQuestions.length === 0) throw new Error('Could not generate any valid questions. Try a different focus area or topic.');
+      if (allQuestions.length === 0) throw new Error('Step 3 failed: Could not generate any valid questions.');
 
-      // Phase 5: Persist
-      setGenProgress({ current: filledCount, total: slotsToFill.length, stage: 'Saving questions...' });
+      // ── Save ──────────────────────────────────────────────────────────────────
+      setGenProgress({ step: 3, current: filledCount, total: slotsToFill.length, stage: 'Saving questions...' });
       const questionsToCreate = allQuestions.map(({ q, slot }, idx) => {
         let correctAnswer = q.correct_answer?.trim();
         const options = (q.options || []).map(o => o?.trim());
@@ -358,7 +369,7 @@ export default function GenerateQuestions() {
         count: questionsToCreate.length,
         filteredOut: culledCount,
         exhaustedSlots,
-        totalSlotsPlanned: masterSlots.length,
+        totalSlotsPlanned: allSlots.length,
         openSlotsAvailable: openSlots.length,
         trades: selectedTrades,
         lawsCovered: laws.length,
@@ -368,7 +379,7 @@ export default function GenerateQuestions() {
       setResults({ success: false, error: error.message });
     } finally {
       setGenerating(false);
-      setGenProgress({ current: 0, total: 0, stage: '' });
+      setGenProgress({ step: 0, current: 0, total: 0, stage: '' });
     }
   };
 
