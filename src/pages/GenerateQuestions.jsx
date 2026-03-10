@@ -183,17 +183,14 @@ export default function GenerateQuestions() {
     'numerical_precision', 'forms_and_documentation', 'change_over_time'
   ];
 
-  const buildMasterPlan = async (laws, jurisdiction, trades, onProgress) => {
-    const allSlots = [];
+  const PLAN_CONCURRENCY = 4; // laws planned in parallel
+  const FILL_CONCURRENCY = 5; // slots filled in parallel
 
-    for (let i = 0; i < laws.length; i++) {
-      const law = laws[i];
-      onProgress(i + 1, laws.length, `Planning slots for ${law.citation}...`);
+  const planSingleLaw = async (law, jurisdiction, trades) => {
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `You are a professional licensing exam curriculum designer with expertise in ${jurisdiction} law.
 
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a professional licensing exam curriculum designer with expertise in ${jurisdiction} law.
-
-For the following law, pre-define exactly 25 unique question slots across the 15 taxonomy dimensions listed below. Each slot must identify a specific, unique legal fact that can be tested in a question. No two slots may test the same fact.
+For the following law, pre-define exactly 25 unique question slots across the 15 taxonomy dimensions. Each slot identifies a specific, unique legal fact. No two slots may test the same fact.
 
 Law: ${law.citation}
 Title: ${law.title}
@@ -201,60 +198,60 @@ Type: ${law.law_type}
 Trade(s): ${trades.join(', ')}
 Jurisdiction: ${jurisdiction}
 
-The 15 required taxonomy dimensions (distribute 25 slots across ALL dimensions — every dimension must have at least 1 slot; prioritize dimensions with the most testable facts):
-1. definitions — key statutory terms and their exact legal meanings
-2. thresholds_limits — specific numeric values (distances, sizes, volumes, etc.)
-3. exemptions — who or what is explicitly exempt and under what conditions
-4. penalties — fines, suspensions, criminal charges for specific violations
-5. required_procedures — mandatory step-by-step processes
-6. deadlines — timeframes, notice periods, renewal windows
-7. responsible_parties — who legally bears responsibility for each activity
-8. documentation_requirements — required records, permits, reports, logs
-9. enforcement_mechanisms — inspection authority, agency powers, complaint procedures
-10. comparative — how this law differs from a related law or neighboring state equivalent
-11. sequencing — the exact required order of mandatory procedural steps
-12. actor_responsibility — which specific party (contractor, inspector, owner, agency) is responsible
-13. numerical_precision — exact mandated figures: distances, timeframes, fees, thresholds
-14. forms_and_documentation — specific named forms/permits, who completes and retains them, and for how long
-15. change_over_time — what this law required before its most recent amendment vs. now
+15 taxonomy dimensions (every dimension must appear at least once; distribute evenly):
+1. definitions 2. thresholds_limits 3. exemptions 4. penalties 5. required_procedures
+6. deadlines 7. responsible_parties 8. documentation_requirements 9. enforcement_mechanisms
+10. comparative 11. sequencing 12. actor_responsibility 13. numerical_precision
+14. forms_and_documentation 15. change_over_time
 
-For each slot, provide:
-- dimension: one of the 15 dimension names above
-- legal_fact_fingerprint: a unique plain-English description of exactly what legal fact this question will test, format: "[Citation] — [specific fact]"
-- question_hint: a one-line description of what the question should ask (e.g. "Ask what the minimum horizontal setback is between a septic tank and a well")
-- suggested_format: one of: multiple_choice, true_false, fill_in_blank
-
-Distribute the 25 slots as evenly as possible across the 15 dimensions. Every dimension must appear at least once.`,
-        add_context_from_internet: true,
-        model: "gemini_3_flash",
-        response_json_schema: {
-          type: "object",
-          properties: {
-            slots: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  dimension: { type: "string" },
-                  legal_fact_fingerprint: { type: "string" },
-                  question_hint: { type: "string" },
-                  suggested_format: { type: "string" }
-                }
+For each slot:
+- dimension: one of the 15 names above
+- legal_fact_fingerprint: "[Citation] — [specific fact]"
+- question_hint: one-line description of what the question should ask
+- suggested_format: multiple_choice | true_false | fill_in_blank`,
+      add_context_from_internet: true,
+      model: "gemini_3_flash",
+      response_json_schema: {
+        type: "object",
+        properties: {
+          slots: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                dimension: { type: "string" },
+                legal_fact_fingerprint: { type: "string" },
+                question_hint: { type: "string" },
+                suggested_format: { type: "string" }
               }
             }
           }
         }
-      });
+      }
+    });
 
-      const slots = (result?.slots || []).slice(0, 25).map(slot => ({
-        ...slot,
-        law_citation: law.citation,
-        law_title: law.title,
-        law_type: law.law_type,
-        trade: trades[0],
-        filled: false
-      }));
-      allSlots.push(...slots);
+    return (result?.slots || []).slice(0, 25).map(slot => ({
+      ...slot,
+      law_citation: law.citation,
+      law_title: law.title,
+      law_type: law.law_type,
+      trade: trades[0],
+      filled: false
+    }));
+  };
+
+  const buildMasterPlan = async (laws, jurisdiction, trades, onProgress) => {
+    const allSlots = [];
+    let completed = 0;
+
+    // Process laws in parallel batches
+    for (let i = 0; i < laws.length; i += PLAN_CONCURRENCY) {
+      const batch = laws.slice(i, i + PLAN_CONCURRENCY);
+      onProgress(completed, laws.length, `Planning slots for ${batch.map(l => l.citation).join(', ')}...`);
+      const batchResults = await Promise.all(batch.map(law => planSingleLaw(law, jurisdiction, trades)));
+      for (const slots of batchResults) allSlots.push(...slots);
+      completed += batch.length;
+      onProgress(completed, laws.length, `Planned ${completed}/${laws.length} laws...`);
     }
 
     return allSlots;
