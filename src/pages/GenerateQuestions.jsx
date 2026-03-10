@@ -984,51 +984,50 @@ Keep explanations to 1 sentence maximum.`;
   const generateQuestions = async () => {
     setGenerating(true);
     setResults(null);
-    const BATCH_SIZE = 5;
-    let allocation = [];
 
     try {
-      // Step 1: Enumerate all applicable laws
-      setGenProgress({ current: 1, total: 4, stage: `Enumerating all applicable ${jurisdictionMode === 'federal' ? 'federal' : selectedJurisdiction} laws for ${selectedTrades.join(', ')}...` });
       const effectiveJurisdiction = jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction;
+
+      // ── Phase 1: Enumerate laws ──────────────────────────────────────────────
+      setGenProgress({ current: 0, total: 100, stage: `Enumerating applicable ${effectiveJurisdiction} laws...` });
       let laws = lawRegistry.length > 0 ? lawRegistry : await fetchApplicableLaws(selectedTrades, effectiveJurisdiction, jurisdictionMode);
       if (laws.length === 0) throw new Error('Could not enumerate applicable laws. Try again or check your trade/jurisdiction selection.');
       if (lawRegistry.length === 0) setLawRegistry(laws);
 
-      // Step 2: Compute allocation — how many questions per law
-      allocation = computeLawAllocation(laws, questionCount);
-      const totalBatches = allocation.reduce((sum, a) => sum + Math.ceil(a.count / BATCH_SIZE), 0);
+      // ── Phase 2: Build Master Plan (25 pre-defined slots per law) ────────────
+      setGenProgress({ current: 0, total: laws.length, stage: `Building master question plan (25 slots × ${laws.length} laws = ${laws.length * 25} total slots)...` });
 
-      setGenProgress({ current: 2, total: totalBatches + 3, stage: `Building coverage taxonomy...` });
+      const masterSlots = await buildMasterPlan(laws, effectiveJurisdiction, selectedTrades,
+        (current, total, stage) => setGenProgress({ current, total, stage })
+      );
+      setMasterPlanData(masterSlots);
 
-      // Step 3: Fetch taxonomy + ratio in parallel
-      const [taxonomy, ratioMap] = await Promise.all([
-        fetchTaxonomy(selectedTrades, effectiveJurisdiction, focusArea),
-        fetchStatuteRegRatio(selectedTrades, effectiveJurisdiction)
-      ]);
-
-      // Step 4: Fetch existing questions to avoid fingerprint duplication
+      // ── Phase 3: Fetch existing questions to seed dedup sets ─────────────────
+      setGenProgress({ current: 0, total: 1, stage: 'Loading existing question catalogue for deduplication...' });
       const existingQuestions = await base44.entities.LawQuestion.filter({ jurisdiction: effectiveJurisdiction });
       const relevantExisting = existingQuestions.filter(q => selectedTrades.some(t => q.trade === t));
-      const existingCitations = relevantExisting.map(q => q.law_citation).filter(Boolean);
-      const existingFingerprints = relevantExisting.map(q => q.legal_fact_fingerprint).filter(Boolean);
+      const seenCitations = new Set(relevantExisting.map(q => q.law_citation).filter(Boolean));
+      const seenFingerprints = new Set(
+        relevantExisting.map(q => q.legal_fact_fingerprint).filter(Boolean).map(f => f.trim().toLowerCase())
+      );
 
-      const usedDimensionFacts = {};
-      let lastFormat = null;
-      let lastCogLevel = null;
+      // ── Phase 4: Select slots to fill (limited by questionCount) ────────────
+      // Filter out slots whose fingerprint is already in the catalogue, then take up to questionCount
+      const openSlots = masterSlots.filter(slot =>
+        !slot.legal_fact_fingerprint ||
+        !seenFingerprints.has(slot.legal_fact_fingerprint.trim().toLowerCase())
+      );
+      const slotsToFill = openSlots.slice(0, questionCount);
+      if (slotsToFill.length === 0) throw new Error('All pre-planned slots are already covered in your catalogue. Generate for a different trade or jurisdiction.');
+
+      // ── Phase 5: Fill slots one by one ──────────────────────────────────────
       const allQuestions = [];
-      let exhaustedSlots = 0;
       let culledCount = 0;
-      let stepNum = 3;
-
-      // Dedup sets initialized before the loop so inline validation works correctly
-      const seenCitations = new Set(existingCitations);
-      const seenFingerprints = new Set(existingFingerprints);
+      let exhaustedSlots = 0;
 
       const isValidQuestion = (q) => {
         if (!q.question_text || !q.correct_answer) return false;
         if (q.legal_fact_fingerprint && seenFingerprints.has(q.legal_fact_fingerprint.trim().toLowerCase())) return false;
-        if (q.law_citation && seenCitations.has(q.law_citation)) return false;
         const qLower = q.question_text.toLowerCase();
         const aLower = q.correct_answer.toLowerCase().trim();
         if (aLower.length > 2 && qLower.includes(aLower)) return false;
@@ -1042,95 +1041,58 @@ Keep explanations to 1 sentence maximum.`;
       const acceptQuestion = (q) => {
         if (q.legal_fact_fingerprint) seenFingerprints.add(q.legal_fact_fingerprint.trim().toLowerCase());
         if (q.law_citation) seenCitations.add(q.law_citation);
-        if (q.taxonomy_dimension && q.testable_fact) {
-          if (!usedDimensionFacts[q.taxonomy_dimension]) usedDimensionFacts[q.taxonomy_dimension] = [];
-          usedDimensionFacts[q.taxonomy_dimension].push(q.testable_fact);
-        }
-        lastFormat = q.question_type || lastFormat;
-        lastCogLevel = q.cognitive_level || lastCogLevel;
         allQuestions.push(q);
       };
 
-      // Step 5: Generate law by law; validate inline; replace every culled slot immediately
-      for (const lawEntry of allocation) {
-        let lawRemaining = lawEntry.count;
-        while (lawRemaining > 0) {
-          const batchCount = Math.min(BATCH_SIZE, lawRemaining);
-          stepNum++;
-          setGenProgress({ current: stepNum, total: totalBatches + 3, stage: `Generating from ${lawEntry.citation} (${lawEntry.title})...` });
+      for (let i = 0; i < slotsToFill.length; i++) {
+        const slot = slotsToFill[i];
+        setGenProgress({
+          current: i + 1,
+          total: slotsToFill.length,
+          stage: `Filling slot ${i + 1}/${slotsToFill.length}: [${slot.dimension}] ${slot.law_citation}`
+        });
 
-          const prompt = buildPrompt(
-            selectedTrades, effectiveJurisdiction, batchCount,
-            [...seenCitations], ratioMap, focusArea,
-            taxonomy, usedDimensionFacts,
-            lastFormat, lastCogLevel, {},
-            [...seenFingerprints],
-            lawEntry
-          );
-          const response = await callLLM(prompt);
-          const batch = (response?.questions || []).slice(0, batchCount);
+        const prompt = buildSlotFillPrompt(slot, effectiveJurisdiction, selectedTrades, [...seenFingerprints], [...seenCitations]);
+        const response = await callLLM(prompt);
+        const q = response?.questions?.[0];
 
-          for (const q of batch) {
-            if (isValidQuestion(q)) {
-              acceptQuestion(q);
-            } else {
-              culledCount++;
-              const excludedDimension = q.taxonomy_dimension || null;
-              let replaced = false;
-
-              for (let attempt = 0; attempt < 5; attempt++) {
-                setGenProgress({ current: stepNum, total: totalBatches + 3, stage: `Replacement ${attempt + 1}/5 for ${lawEntry.citation}...` });
-                const repPrompt = buildPrompt(
-                  selectedTrades, effectiveJurisdiction, 1,
-                  [...seenCitations], ratioMap, focusArea,
-                  taxonomy, usedDimensionFacts,
-                  lastFormat, lastCogLevel, {},
-                  [...seenFingerprints],
-                  lawEntry
-                ) + (excludedDimension
-                  ? `\n\nCRITICAL: Do NOT generate a question in the "${excludedDimension}" dimension. You must choose a completely different sub-dimension and legal fact.`
-                  : '');
-                const repResponse = await callLLM(repPrompt);
-                const repQ = repResponse?.questions?.[0];
-                if (repQ && isValidQuestion(repQ)) {
-                  acceptQuestion(repQ);
-                  replaced = true;
-                  break;
-                }
-              }
-
-              if (!replaced) {
-                console.log(`taxonomy exhausted for dimension: ${excludedDimension || 'unknown'} in ${lawEntry.citation}`);
-                exhaustedSlots++;
-              }
+        if (q && isValidQuestion(q)) {
+          acceptQuestion(q);
+        } else {
+          culledCount++;
+          let replaced = false;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            setGenProgress({
+              current: i + 1,
+              total: slotsToFill.length,
+              stage: `Retry ${attempt + 1}/3 for slot: [${slot.dimension}] ${slot.law_citation}...`
+            });
+            const retryResponse = await callLLM(prompt);
+            const retryQ = retryResponse?.questions?.[0];
+            if (retryQ && isValidQuestion(retryQ)) {
+              acceptQuestion(retryQ);
+              replaced = true;
+              break;
             }
           }
-
-          lawRemaining -= batchCount;
+          if (!replaced) exhaustedSlots++;
         }
       }
 
-      // allQuestions is already fully validated and deduplicated inline above
-      const validQuestions = allQuestions;
-
-      // Create questions in database
-      const questionsToCreate = validQuestions.map((q, idx) => {
+      // ── Phase 6: Persist to database ────────────────────────────────────────
+      const questionsToCreate = allQuestions.map((q, idx) => {
         let correctAnswer = q.correct_answer?.trim();
         const options = (q.options || []).map(o => o?.trim());
 
-        // For multiple choice: force correct_answer to be the EXACT option text using aggressive normalization
         if (q.question_type === 'multiple_choice' && options.length > 0) {
           const match = options.find(opt => normalizeForMatch(opt) === normalizeForMatch(correctAnswer));
-          if (match) correctAnswer = match; // store the exact option string
+          if (match) correctAnswer = match;
         }
-
-        // For true/false: normalize to "True" or "False"
         if (q.question_type === 'true_false') {
           if (correctAnswer?.toLowerCase() === 'true') correctAnswer = 'True';
           if (correctAnswer?.toLowerCase() === 'false') correctAnswer = 'False';
         }
 
-        // Assign trade: use AI-returned trade if valid, otherwise round-robin across selected trades
         const assignedTrade = selectedTrades.includes(q.trade)
           ? q.trade
           : selectedTrades[idx % selectedTrades.length];
@@ -1142,7 +1104,7 @@ Keep explanations to 1 sentence maximum.`;
           options,
           trade: assignedTrade,
           jurisdiction: effectiveJurisdiction,
-          law_type: q.law_type,
+          law_type: q.law_type || slot?.law_type,
           law_citation: q.law_citation,
           legal_fact_fingerprint: q.legal_fact_fingerprint?.trim() || null,
           explanation: q.explanation,
@@ -1153,7 +1115,6 @@ Keep explanations to 1 sentence maximum.`;
       if (questionsToCreate.length === 0) throw new Error('All generated questions were too similar to existing ones. Try a different focus area or broader topic.');
 
       await base44.entities.LawQuestion.bulkCreate(questionsToCreate);
-
       queryClient.invalidateQueries(['questions']);
 
       setResults({
@@ -1161,16 +1122,15 @@ Keep explanations to 1 sentence maximum.`;
         count: questionsToCreate.length,
         filteredOut: culledCount,
         exhaustedSlots,
+        totalSlotsPlanned: masterSlots.length,
+        openSlotsAvailable: openSlots.length,
         trades: selectedTrades,
-        lawsCovered: allocation.length,
+        lawsCovered: laws.length,
         jurisdiction: effectiveJurisdiction
       });
     } catch (error) {
       console.error('Error generating questions:', error);
-      setResults({
-        success: false,
-        error: error.message
-      });
+      setResults({ success: false, error: error.message });
     } finally {
       setGenerating(false);
       setGenProgress({ current: 0, total: 0, stage: '' });
