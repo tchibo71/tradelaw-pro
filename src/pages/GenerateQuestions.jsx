@@ -390,64 +390,72 @@ Return a JSON object with a "results" array, one entry per question in the same 
   };
 
   // Build a coverage taxonomy: dimensions -> testable facts, fresh per trade/focus selection.
-  // When a focus area is given, drill into sub-dimensions for that narrow topic.
+  // Always appends the 6 mandatory extra dimensions.
   const fetchTaxonomy = async (trades, jurisdiction, focusAreaText) => {
     const isFocused = !!focusAreaText?.trim();
 
+    const extraDimensionPrompt = `
+In ADDITION to the above, you MUST also populate these 6 mandatory extra dimensions for each law. Each must have 3–6 concrete, currently-in-force testable facts:
+- comparative: how this law differs from a related law, a prior version, or a neighboring state's equivalent
+- sequencing: the exact required order of mandatory procedural steps — list each step as a testable ordered fact
+- actor_responsibility: which specific party (contractor, subcontractor, inspector, property owner, agency) bears legal responsibility for each requirement
+- numerical_precision: exact figures mandated by law — distances, timeframes, fees, quantities, percentages, thresholds — list each as a separate fact
+- forms_and_documentation: specific forms, permits, logs, or records required, who must complete them, who must retain them, and for how long
+- change_over_time: what this regulation required before the most recent amendment versus what it requires now (only include if a known amendment exists)`;
+
+    const baseSchema = {
+      type: "object",
+      properties: {
+        taxonomy: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              dimension: { type: "string" },
+              testable_facts: { type: "array", items: { type: "string" } }
+            }
+          }
+        }
+      }
+    };
+
     if (isFocused) {
-      // Deep sub-dimension taxonomy for a narrow focus topic
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: `You are a professional licensing exam curriculum designer. A student is specifically studying "${focusAreaText.trim()}" as it applies to ${trades.join(', ')} in ${jurisdiction}.
 
-Your job is to build a DEEP sub-dimension taxonomy for this narrow topic. Do NOT reduce the number of dimensions — instead INCREASE specificity so that at least 15 completely unique questions can be generated before any sub-dimension repeats.
+Build a DEEP sub-dimension taxonomy. For EACH sub-dimension, list 4–8 specific, concrete, currently-in-force testable facts from ${jurisdiction} law.
 
-Required sub-dimensions to populate (use ALL of them):
-- numeric_thresholds: every specific number mandated by law for this topic (distances, depths, sizes, volumes, times, fees, percentages) — list at least 5 distinct values
-- procedural_steps: each mandatory step in the required procedure, in order — list each step as a separate testable fact
+Required sub-dimensions:
+- numeric_thresholds: every specific number mandated (distances, depths, volumes, times, fees) — at least 5 distinct values
+- procedural_steps: each mandatory step in the required procedure, listed as individual testable facts
 - equipment_specifications: required equipment types, materials, grades, standards, or approved products
-- soil_or_site_criteria: classification criteria, evaluation standards, pass/fail benchmarks, site conditions (adapt label to topic)
-- pass_fail_criteria: specific thresholds or conditions that determine approval vs. rejection
-- documentation_forms: specific forms, reports, logs, permits, or filings required and who must submit them
-- authorized_parties: who is legally authorized (or prohibited) from performing each step or making each determination
-- timing_and_deadlines: required timeframes, waiting periods, notice windows, or scheduling rules
-- exemptions_and_exceptions: what is exempt from this requirement and under what conditions
-- enforcement_and_penalties: what violations are possible, who enforces them, and what the consequences are
-
-For EACH sub-dimension, list 4–8 specific, concrete, currently-in-force testable facts from ${jurisdiction} law. Be precise — real numbers, real agency names, real rule citations where possible. Do NOT include vague or abstract descriptions. Only include facts you are confident are real.
+- soil_or_site_criteria: classification criteria, evaluation standards, pass/fail benchmarks
+- pass_fail_criteria: specific thresholds or conditions determining approval vs. rejection
+- documentation_forms: specific forms, reports, permits, filings, and who submits them
+- authorized_parties: who is legally authorized (or prohibited) for each step
+- timing_and_deadlines: required timeframes, waiting periods, notice windows
+- exemptions_and_exceptions: what is exempt and under what conditions
+- enforcement_and_penalties: violations, enforcement agency, consequences
+${extraDimensionPrompt}
 
 Trades: ${trades.join(', ')}
 Topic: ${focusAreaText.trim()}
 Jurisdiction: ${jurisdiction}`,
         add_context_from_internet: true,
         model: "gemini_3_flash",
-        response_json_schema: {
-          type: "object",
-          properties: {
-            taxonomy: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  dimension: { type: "string" },
-                  testable_facts: { type: "array", items: { type: "string" } }
-                }
-              }
-            }
-          }
-        }
+        response_json_schema: baseSchema
       });
       return result?.taxonomy || [];
     }
 
-    // Standard broad taxonomy (no focus area)
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a professional licensing exam curriculum designer. For the licensed trades listed below in ${jurisdiction}, build a coverage taxonomy by breaking the applicable laws and regulations into distinct testable dimensions.
+      prompt: `You are a professional licensing exam curriculum designer. For the licensed trades below in ${jurisdiction}, build a coverage taxonomy broken into distinct testable dimensions.
 
 Trades: ${trades.join(', ')}
 
-For each dimension, list 4–8 specific, concrete, currently-in-force testable facts or rules found in ${jurisdiction} law for these trades. Be precise — list actual requirements, numbers, processes, or parties, not abstract descriptions. Only include facts you are confident are real.
+For each dimension, list 4–8 specific, concrete, currently-in-force testable facts from ${jurisdiction} law. Only include facts you are confident are real.
 
-Dimensions to populate:
+Core dimensions to populate:
 - definitions: key statutory or regulatory defined terms and their meanings
 - thresholds_limits: specific numeric values (distances, hours, fees, quantities) mandated by law
 - exemptions: who or what is explicitly exempt from a requirement
@@ -456,24 +464,11 @@ Dimensions to populate:
 - deadlines: timeframes, notice periods, renewal windows, response deadlines
 - responsible_parties: who bears legal responsibility for what activity
 - documentation_requirements: required records, permits, reports, logs, filings
-- enforcement_mechanisms: inspection authority, enforcement agency powers, complaint procedures`,
+- enforcement_mechanisms: inspection authority, enforcement agency powers, complaint procedures
+${extraDimensionPrompt}`,
       add_context_from_internet: true,
       model: "gemini_3_flash",
-      response_json_schema: {
-        type: "object",
-        properties: {
-          taxonomy: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                dimension: { type: "string" },
-                testable_facts: { type: "array", items: { type: "string" } }
-              }
-            }
-          }
-        }
-      }
+      response_json_schema: baseSchema
     });
     return result?.taxonomy || [];
   };
