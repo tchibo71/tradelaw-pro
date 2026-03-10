@@ -470,8 +470,7 @@ Return a JSON object with a "results" array, one entry per question in the same 
     setSelectedTrades(prev => prev.filter(t => t !== trade));
   };
 
-  const REGULATORY_AREAS = {
-    'Septic System Installer': [
+  const DEAD_REGULATORY_AREAS = {
       'soil evaluation and site assessment requirements', 'setback distances from water sources, property lines, wells, and structures',
       'system sizing calculations and design criteria', 'installation depth and cover requirements',
       'inspection and approval process before backfilling', 'permit application and fee requirements',
