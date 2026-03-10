@@ -660,6 +660,8 @@ Return every law you can find. Aim for completeness — it is better to include 
       ? `\n\nCRITICAL - DO NOT TEST THESE LEGAL FACTS (already covered — each question must test a completely different legal fact):\n${existingFingerprints.slice(0, 80).map((f, i) => `${i + 1}. ${f}`).join('\n')}\n`
       : '';
 
+    const isFocused = !!focusAreaText?.trim();
+
     // Build taxonomy guidance section
     const taxonomySection = taxonomy.length > 0 ? (() => {
       const dims = taxonomy.map(dim => {
@@ -683,7 +685,6 @@ Return every law you can find. Aim for completeness — it is better to include 
       ).join('\n\n')}\n\nFor each question, set the "taxonomy_dimension" field to exactly one of: ${dims.map(d => d.dimension).join(', ')}`;
     })() : '';
 
-    const isFocused = !!focusAreaText?.trim();
     const focusSection = isFocused
       ? `\n\nSPECIFIC FOCUS: All ${count} questions must be about: "${focusAreaText.trim()}"\nDo NOT reduce specificity or breadth — instead INCREASE depth. Cover every sub-dimension of this topic. The minimum viable unique question count for this topic before any sub-dimension repeats is 15. You must cover at least one question per sub-dimension listed in the taxonomy below before revisiting any sub-dimension.\n`
       : '';
