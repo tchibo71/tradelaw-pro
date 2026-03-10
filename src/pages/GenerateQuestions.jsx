@@ -725,12 +725,20 @@ Keep explanations to 1 sentence maximum.`;
           .replace(/\s+/g, ' ')
           .trim();
 
-      // Filter out questions that embed their answer in the question text or duplicate citations
+      // Filter out duplicates (by fingerprint/intent) and malformed questions
       const seenCitations = new Set(existingCitations);
+      const seenFingerprints = new Set(existingFingerprints);
       const validQuestions = allQuestions.filter(q => {
         if (!q.question_text || !q.correct_answer) return false;
-        
-        // Block if citation already exists (only keep first instance of each citation)
+
+        // Block if this exact legal fact was already tested (intent-based dedup)
+        if (q.legal_fact_fingerprint) {
+          const fp = q.legal_fact_fingerprint.trim().toLowerCase();
+          if (seenFingerprints.has(fp)) return false;
+          seenFingerprints.add(fp);
+        }
+
+        // Block if citation already exists (secondary safety net)
         if (q.law_citation && seenCitations.has(q.law_citation)) return false;
         if (q.law_citation) seenCitations.add(q.law_citation);
 
