@@ -625,7 +625,7 @@ Return every law you can find. Aim for completeness — it is better to include 
     }
   };
 
-  const buildPrompt = (trades, jurisdiction, count, existingCitations = [], ratioMap = {}, focusAreaText = '', taxonomy = [], usedDimensionFacts = {}, lastFormat = null, lastCogLevel = null, formatCounts = {}, existingFingerprints = []) => {
+  const buildPrompt = (trades, jurisdiction, count, existingCitations = [], ratioMap = {}, focusAreaText = '', taxonomy = [], usedDimensionFacts = {}, lastFormat = null, lastCogLevel = null, formatCounts = {}, existingFingerprints = [], targetLaw = null) => {
     const tradesLabel = trades.join(', ');
 
     const heavyRegTrades = [
