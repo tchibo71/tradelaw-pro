@@ -626,22 +626,40 @@ For each law: citation (exact), title (short), law_type ("statute" or "regulatio
     ],
   };
 
-  const getRandomAreas = (trade, count) => {
-    const areas = REGULATORY_AREAS[trade];
-    if (!areas) return [];
-    const shuffled = [...areas].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(count, areas.length));
+  // REGULATORY_AREAS kept above for reference. getRandomAreas removed (unused).
+
+  const callLLM = async (prompt) => {
+    return base44.integrations.Core.InvokeLLM({
+      prompt,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                question_text: { type: "string" },
+                question_type: { type: "string" },
+                correct_answer: { type: "string" },
+                options: { type: "array", items: { type: "string" } },
+                trade: { type: "string" },
+                law_type: { type: "string" },
+                law_citation: { type: "string" },
+                explanation: { type: "string" },
+                difficulty: { type: "string" },
+                legal_fact_fingerprint: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    });
   };
 
-  // fetchTaxonomy removed — replaced by buildMasterPlan
-  // fetchStatuteRegRatio removed — no longer needed
-  // computeLawAllocation removed — replaced by slot-based planning
-  // buildPrompt removed — replaced by buildSlotFillPrompt
+  const generateQuestions_DEAD = null; // remove the old one below
 
-  const callLLM_PLACEHOLDER = null; // anchor
-
-  // fetchTaxonomy was here
-  const _fetchTaxonomy_REMOVED = async (trades, jurisdiction, focusAreaText) => {
     const isFocused = !!focusAreaText?.trim();
 
     const extraDimensionPrompt = `
