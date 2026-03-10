@@ -472,45 +472,6 @@ Return a JSON object with a "results" array, one entry per question in the same 
 
   // REGULATORY_AREAS removed — no longer used.
 
-  const normalizeFP_placeholder = null;
-
-      'system sizing calculations and design criteria', 'installation depth and cover requirements',
-      'inspection and approval process before backfilling', 'permit application and fee requirements',
-      'prohibited installation areas (flood zones, steep slopes, unsuitable soils)', 'gravity vs pressure distribution systems',
-      'installer license renewal and continuing education', 'record-keeping and as-built drawing requirements',
-      'repair and alteration permits for existing systems', 'seasonal high water table restrictions',
-      'perc test and soil morphology evaluation procedures', 'trench dimensions and aggregate specifications',
-      'pipe material and perforations specifications', 'distribution box requirements',
-      'system certification after installation', 'variance application procedures',
-      'license suspension and revocation grounds', 'apprenticeship supervision requirements'
-    ],
-    'Septic System Pumper': [
-      'pumping frequency requirements by system type and size', 'manifest and waste tracking documentation',
-      'disposal site permit requirements', 'vehicle and equipment standards',
-      'prohibited disposal locations', 'spill response and reporting requirements',
-      'license application and examination requirements', 'background check requirements',
-      'waste transport route restrictions', 'emergency pumping procedures',
-      'inspection duties during pumping', 'reporting failing systems to authorities',
-      'grease trap and commercial system pumping differences', 'record retention periods'
-    ],
-    'Septic System Designer': [
-      'soil scientist vs engineer design authority', 'site evaluation report requirements',
-      'design criteria for different soil types', 'alternative system design approval process',
-      'engineered system stamping requirements', 'design life expectancy standards',
-      'loading rate calculations', 'reserve area requirements',
-      'mound system design specifications', 'drip irrigation system design rules',
-      'nitrogen reduction system requirements', 'design submission and review timeline',
-      'design changes during installation', 'as-built certification responsibilities'
-    ],
-    'Septic System Inspector': [
-      'inspection checklist requirements', 'point-of-sale inspection requirements',
-      'inspector certification vs contractor license', 'reporting responsibilities for failing systems',
-      'access requirements for inspections', 'documentation and report format',
-      'third-party inspector qualifications', 'conflict of interest restrictions',
-      'follow-up inspection requirements after repairs', 'inspection frequency for commercial systems'
-    ],
-  };
-
   // Normalize a fingerprint for comparison
   const normalizeFP = (str) =>
     (str || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
