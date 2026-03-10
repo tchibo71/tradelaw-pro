@@ -795,69 +795,73 @@ Keep explanations to 1 sentence maximum.`;
     setGenerating(true);
     setResults(null);
     const BATCH_SIZE = 5;
-    const totalBatches = Math.ceil(questionCount / BATCH_SIZE);
-    // +1 for taxonomy + ratio research (done in parallel)
-    const totalSteps = 1 + totalBatches;
-    let step = 0;
-
-    const advanceProgress = (stage) => {
-      step++;
-      setGenProgress({ current: step, total: totalSteps, stage });
-    };
 
     try {
-      // Fetch taxonomy + ratio in parallel
-      advanceProgress('Building coverage taxonomy and researching statute proportions...');
+      // Step 1: Enumerate all applicable laws
+      setGenProgress({ current: 1, total: 4, stage: `Enumerating all applicable ${jurisdictionMode === 'federal' ? 'federal' : selectedJurisdiction} laws for ${selectedTrades.join(', ')}...` });
+      const effectiveJurisdiction = jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction;
+      let laws = lawRegistry.length > 0 ? lawRegistry : await fetchApplicableLaws(selectedTrades, effectiveJurisdiction, jurisdictionMode);
+      if (laws.length === 0) throw new Error('Could not enumerate applicable laws. Try again or check your trade/jurisdiction selection.');
+      if (lawRegistry.length === 0) setLawRegistry(laws);
+
+      // Step 2: Compute allocation — how many questions per law
+      const allocation = computeLawAllocation(laws, questionCount);
+      const totalBatches = allocation.reduce((sum, a) => sum + Math.ceil(a.count / BATCH_SIZE), 0);
+
+      setGenProgress({ current: 2, total: totalBatches + 3, stage: `Building coverage taxonomy...` });
+
+      // Step 3: Fetch taxonomy + ratio in parallel
       const [taxonomy, ratioMap] = await Promise.all([
-        fetchTaxonomy(selectedTrades, selectedJurisdiction, focusArea),
-        fetchStatuteRegRatio(selectedTrades, selectedJurisdiction)
+        fetchTaxonomy(selectedTrades, effectiveJurisdiction, focusArea),
+        fetchStatuteRegRatio(selectedTrades, effectiveJurisdiction)
       ]);
 
-      // Fetch existing questions to avoid duplicate citations and fingerprints
-      const existingQuestions = await base44.entities.LawQuestion.filter({
-        jurisdiction: selectedJurisdiction
-      });
+      // Step 4: Fetch existing questions to avoid fingerprint duplication
+      const existingQuestions = await base44.entities.LawQuestion.filter({ jurisdiction: effectiveJurisdiction });
       const relevantExisting = existingQuestions.filter(q => selectedTrades.some(t => q.trade === t));
       const existingCitations = relevantExisting.map(q => q.law_citation).filter(Boolean);
       const existingFingerprints = relevantExisting.map(q => q.legal_fact_fingerprint).filter(Boolean);
 
-      // Track used dimension+fact pairs across batches to prevent same-fact repetition
-      const usedDimensionFacts = {}; // { dimension: [fact, fact, ...] }
-      // Track format rotation state across batches
+      const usedDimensionFacts = {};
       let lastFormat = null;
       let lastCogLevel = null;
-      const globalFormatCounts = {};
-
-      // Split into batches of 5 to avoid JSON truncation with large requests
       const allQuestions = [];
-      let remaining = questionCount;
+      let stepNum = 3;
 
-      while (remaining > 0) {
-        const batchCount = Math.min(BATCH_SIZE, remaining);
-        advanceProgress(`Generating questions (batch ${Math.ceil((questionCount - remaining) / BATCH_SIZE) + 1} of ${totalBatches})...`);
-        const allExistingCitations = [...existingCitations, ...allQuestions.map(q => q.law_citation)];
-        // Per-batch format counts (reset each batch)
-        const batchFormatCounts = {};
-        const allExistingFingerprints = [...existingFingerprints, ...allQuestions.map(q => q.legal_fact_fingerprint).filter(Boolean)];
-        const prompt = buildPrompt(selectedTrades, selectedJurisdiction, batchCount, allExistingCitations, ratioMap, focusArea, taxonomy, usedDimensionFacts, lastFormat, lastCogLevel, batchFormatCounts, allExistingFingerprints);
-        const response = await callLLM(prompt);
-        if (response?.questions?.length > 0) {
-          const batch = response.questions.slice(0, batchCount);
-          for (const q of batch) {
-            // Record used dimension+fact pairs
-            if (q.taxonomy_dimension && q.testable_fact) {
-              if (!usedDimensionFacts[q.taxonomy_dimension]) usedDimensionFacts[q.taxonomy_dimension] = [];
-              usedDimensionFacts[q.taxonomy_dimension].push(q.testable_fact);
+      // Step 5: Generate questions law by law, batch by batch
+      for (const lawEntry of allocation) {
+        let lawRemaining = lawEntry.count;
+        while (lawRemaining > 0) {
+          const batchCount = Math.min(BATCH_SIZE, lawRemaining);
+          stepNum++;
+          setGenProgress({ current: stepNum, total: totalBatches + 3, stage: `Generating from ${lawEntry.citation} (${lawEntry.title})...` });
+
+          const allExistingCitations = [...existingCitations, ...allQuestions.map(q => q.law_citation)];
+          const allExistingFingerprints = [...existingFingerprints, ...allQuestions.map(q => q.legal_fact_fingerprint).filter(Boolean)];
+
+          const prompt = buildPrompt(
+            selectedTrades, effectiveJurisdiction, batchCount,
+            allExistingCitations, ratioMap, focusArea,
+            taxonomy, usedDimensionFacts,
+            lastFormat, lastCogLevel, {},
+            allExistingFingerprints,
+            lawEntry  // pin this batch to the target law
+          );
+          const response = await callLLM(prompt);
+          if (response?.questions?.length > 0) {
+            const batch = response.questions.slice(0, batchCount);
+            for (const q of batch) {
+              if (q.taxonomy_dimension && q.testable_fact) {
+                if (!usedDimensionFacts[q.taxonomy_dimension]) usedDimensionFacts[q.taxonomy_dimension] = [];
+                usedDimensionFacts[q.taxonomy_dimension].push(q.testable_fact);
+              }
             }
-            // Track format counts
-            if (q.question_type) globalFormatCounts[q.question_type] = (globalFormatCounts[q.question_type] || 0) + 1;
+            const lastQ = batch[batch.length - 1];
+            if (lastQ) { lastFormat = lastQ.question_type || null; lastCogLevel = lastQ.cognitive_level || null; }
+            allQuestions.push(...batch);
           }
-          // Update last format/cog for next batch continuity
-          const lastQ = batch[batch.length - 1];
-          if (lastQ) { lastFormat = lastQ.question_type || null; lastCogLevel = lastQ.cognitive_level || null; }
-          allQuestions.push(...batch);
+          lawRemaining -= batchCount;
         }
-        remaining -= batchCount;
       }
 
       // Aggressively normalize a string for comparison: lowercase, collapse whitespace, strip punctuation
