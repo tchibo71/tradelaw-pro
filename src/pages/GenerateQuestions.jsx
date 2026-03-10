@@ -658,18 +658,9 @@ For each law: citation (exact), title (short), law_type ("statute" or "regulatio
     });
   };
 
-  const generateQuestions_DEAD = null; // remove the old one below
+  // dead code removed
 
-    const isFocused = !!focusAreaText?.trim();
-
-    const extraDimensionPrompt = `
-In ADDITION to the above, you MUST also populate these 6 mandatory extra dimensions for each law. Each must have 3–6 concrete, currently-in-force testable facts:
-- comparative: how this law differs from a related law, a prior version, or a neighboring state's equivalent
-- sequencing: the exact required order of mandatory procedural steps — list each step as a testable ordered fact
-- actor_responsibility: which specific party (contractor, subcontractor, inspector, property owner, agency) bears legal responsibility for each requirement
-- numerical_precision: exact figures mandated by law — distances, timeframes, fees, quantities, percentages, thresholds — list each as a separate fact
-- forms_and_documentation: specific forms, permits, logs, or records required, who must complete them, who must retain them, and for how long
-- change_over_time: what this regulation required before the most recent amendment versus what it requires now (only include if a known amendment exists)`;
+    const _removed1 = null;
 
     const baseSchema = {
       type: "object",
