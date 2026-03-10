@@ -347,6 +347,51 @@ Return a JSON object with a "results" array, one entry per question in the same 
     return shuffled.slice(0, Math.min(count, areas.length));
   };
 
+  // Build a coverage taxonomy: dimensions -> testable facts, fresh per trade/focus selection
+  const fetchTaxonomy = async (trades, jurisdiction, focusAreaText) => {
+    const focusSection = focusAreaText?.trim()
+      ? `Focus specifically on this area: "${focusAreaText.trim()}".`
+      : 'Cover the full breadth of applicable law and regulation.';
+
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt: `You are a professional licensing exam curriculum designer. For the licensed trades listed below in ${jurisdiction}, build a coverage taxonomy by breaking the applicable laws and regulations into distinct testable dimensions.
+
+Trades: ${trades.join(', ')}
+${focusSection}
+
+For each dimension, list 4–8 specific, concrete, currently-in-force testable facts or rules found in ${jurisdiction} law for these trades. Be precise — list actual requirements, numbers, processes, or parties, not abstract descriptions. Only include facts you are confident are real.
+
+Dimensions to populate:
+- definitions: key statutory or regulatory defined terms and their meanings
+- thresholds_limits: specific numeric values (distances, hours, fees, quantities) mandated by law
+- exemptions: who or what is explicitly exempt from a requirement
+- penalties: fines, license suspensions, criminal charges for violations
+- required_procedures: mandatory step-by-step processes required by law
+- deadlines: timeframes, notice periods, renewal windows, response deadlines
+- responsible_parties: who bears legal responsibility for what activity
+- documentation_requirements: required records, permits, reports, logs, filings
+- enforcement_mechanisms: inspection authority, enforcement agency powers, complaint procedures`,
+      add_context_from_internet: true,
+      model: "gemini_3_flash",
+      response_json_schema: {
+        type: "object",
+        properties: {
+          taxonomy: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                dimension: { type: "string" },
+                testable_facts: { type: "array", items: { type: "string" } }
+              }
+            }
+          }
+        }
+      }
+    });
+    return result?.taxonomy || [];
+  };
+
   // Ask LLM to research the actual ratio of statute pages vs regulation pages for these trades/jurisdiction
   const fetchStatuteRegRatio = async (trades, jurisdiction) => {
     const result = await base44.integrations.Core.InvokeLLM({
