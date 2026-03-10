@@ -14,6 +14,45 @@ import { createPageUrl } from '../utils';
 
 const API_KEY = 'd176fde449dbead5a0aead4739173214';
 
+const EXTRA_DIMENSIONS = [
+  {
+    key: 'comparative',
+    label: 'Comparative',
+    description: 'How does this law differ from a related law, a prior version, or a neighboring jurisdiction\'s equivalent? (e.g. "State A requires X, but State B requires Y")',
+    example: 'How does the Tennessee minimum setback requirement differ from the federal EPA guidance on the same topic?'
+  },
+  {
+    key: 'sequencing',
+    label: 'Sequencing',
+    description: 'In what specific order must mandatory procedural steps be completed? Questions must name the exact steps and the correct sequence.',
+    example: 'Which step must be completed BEFORE backfilling a newly installed septic system?'
+  },
+  {
+    key: 'actor_responsibility',
+    label: 'Actor Responsibility',
+    description: 'Which specific party — the contractor, subcontractor, inspector, property owner, or agency — bears legal responsibility for a specific requirement?',
+    example: 'Who is legally responsible for submitting the as-built drawing after installation is complete?'
+  },
+  {
+    key: 'numerical_precision',
+    label: 'Numerical Precision',
+    description: 'Exact figures mandated by law: distances, timeframes, fees, quantities, percentages, temperature/pressure thresholds. The question must test the exact number.',
+    example: 'What is the minimum required horizontal setback, in feet, between a septic tank and a private water well?'
+  },
+  {
+    key: 'forms_and_documentation',
+    label: 'Forms & Documentation',
+    description: 'Which specific form, permit, log, or record is required, who must complete it, who must retain it, and for how long?',
+    example: 'Which form must be submitted to the county health department before beginning installation, and who must sign it?'
+  },
+  {
+    key: 'change_over_time',
+    label: 'Change Over Time',
+    description: 'What did the law or regulation require BEFORE the most recent amendment versus what it requires NOW? Tests awareness of regulatory changes.',
+    example: 'Under the 2019 amendment to Rule 0400-48-01, what changed regarding the minimum inspection notice period?'
+  }
+];
+
 const TRADES = [
   // Construction - General
   "General Contractor", "Building Contractor", "Residential Builder", "Commercial Builder", "Remodeling Contractor",
