@@ -578,8 +578,16 @@ Return JSON only.`,
 
       if (dims.length === 0) return '';
 
-      return `\n\nCOVERAGE TAXONOMY — You MUST tag each question with one taxonomy_dimension from this list. Each question must test a DIFFERENT fact. NEVER generate two questions that test the same fact in the same dimension.\n\nAvailable dimensions and unused testable facts:\n${dims.map(d =>
-        `[${d.dimension}]:\n${d.available.map(f => `  • ${f}`).join('\n')}`
+      const coverageRule = isFocused
+        ? `MANDATORY SUB-DIMENSION COVERAGE RULES (focus mode — minimum 15 unique questions before repeats):
+1. You MUST generate at least one question per sub-dimension listed below before revisiting any sub-dimension.
+2. Each question must test a different specific fact — never two questions on the same fact.
+3. Work through sub-dimensions in order: cover all unused facts in one sub-dimension before moving to the next only when you have exhausted that sub-dimension's unused facts.
+4. Tag each question with the exact "taxonomy_dimension" it belongs to.`
+        : `COVERAGE TAXONOMY — You MUST tag each question with one taxonomy_dimension from this list. Each question must test a DIFFERENT fact. NEVER generate two questions that test the same fact in the same dimension.`;
+
+      return `\n\n${coverageRule}\n\nAvailable sub-dimensions and unused testable facts:\n${dims.map(d =>
+        `[${d.dimension}] (${d.available.length} unused facts):\n${d.available.map(f => `  • ${f}`).join('\n')}`
       ).join('\n\n')}\n\nFor each question, set the "taxonomy_dimension" field to exactly one of: ${dims.map(d => d.dimension).join(', ')}`;
     })() : '';
 
