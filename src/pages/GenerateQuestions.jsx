@@ -967,11 +967,11 @@ Keep explanations to 1 sentence maximum.`;
 
       queryClient.invalidateQueries(['questions']);
 
-      const filteredOut = allQuestions.length - questionsToCreate.length;
       setResults({
         success: true,
         count: questionsToCreate.length,
-        filteredOut,
+        filteredOut: culledCount,
+        exhaustedSlots,
         trades: selectedTrades,
         lawsCovered: allocation.length,
         jurisdiction: effectiveJurisdiction
