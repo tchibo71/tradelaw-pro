@@ -689,13 +689,31 @@ Return results array with { index, accurate, reason } per question.`,
               )}
             </Button>
 
-            {generating && genProgress.total > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{genProgress.stage}</span>
-                  <span>{genProgress.current}/{genProgress.total}</span>
+            {generating && (
+              <div className="space-y-3">
+                {/* Step indicator */}
+                <div className="flex gap-2">
+                  {[1, 2, 3].map(s => (
+                    <div key={s} className={`flex-1 rounded py-1.5 text-center text-xs font-semibold border transition-all ${
+                      genProgress.step === s
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : genProgress.step > s
+                        ? 'bg-green-100 text-green-800 border-green-300'
+                        : 'bg-gray-100 text-gray-400 border-gray-200'
+                    }`}>
+                      {genProgress.step > s ? '✓ ' : ''}{s === 1 ? 'Web Search' : s === 2 ? 'Plan Slots' : 'Generate'}
+                    </div>
+                  ))}
                 </div>
-                <Progress value={Math.round((genProgress.current / genProgress.total) * 100)} className="h-3" />
+                {genProgress.stage && (
+                  <p className="text-xs text-gray-600">{genProgress.stage}</p>
+                )}
+                {genProgress.total > 0 && (
+                  <div className="space-y-1">
+                    <Progress value={Math.round((genProgress.current / genProgress.total) * 100)} className="h-2" />
+                    <p className="text-xs text-gray-400 text-right">{genProgress.current}/{genProgress.total}</p>
+                  </div>
+                )}
               </div>
             )}
 
