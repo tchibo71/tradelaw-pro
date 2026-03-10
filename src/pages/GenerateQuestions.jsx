@@ -172,6 +172,136 @@ export default function GenerateQuestions() {
   const tradeRef = useRef(null);
   const queryClient = useQueryClient();
 
+  // ─── MASTER PLAN ────────────────────────────────────────────────────────────
+  // For each law, ask the LLM to pre-define 25 unique question slots across all
+  // 15 taxonomy dimensions. Returns flat array of slot objects.
+  const ALL_DIMENSIONS = [
+    'definitions', 'thresholds_limits', 'exemptions', 'penalties',
+    'required_procedures', 'deadlines', 'responsible_parties',
+    'documentation_requirements', 'enforcement_mechanisms',
+    'comparative', 'sequencing', 'actor_responsibility',
+    'numerical_precision', 'forms_and_documentation', 'change_over_time'
+  ];
+
+  const buildMasterPlan = async (laws, jurisdiction, trades, onProgress) => {
+    const allSlots = [];
+
+    for (let i = 0; i < laws.length; i++) {
+      const law = laws[i];
+      onProgress(i + 1, laws.length, `Planning slots for ${law.citation}...`);
+
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a professional licensing exam curriculum designer with expertise in ${jurisdiction} law.
+
+For the following law, pre-define exactly 25 unique question slots across the 15 taxonomy dimensions listed below. Each slot must identify a specific, unique legal fact that can be tested in a question. No two slots may test the same fact.
+
+Law: ${law.citation}
+Title: ${law.title}
+Type: ${law.law_type}
+Trade(s): ${trades.join(', ')}
+Jurisdiction: ${jurisdiction}
+
+The 15 required taxonomy dimensions (distribute 25 slots across ALL dimensions — every dimension must have at least 1 slot; prioritize dimensions with the most testable facts):
+1. definitions — key statutory terms and their exact legal meanings
+2. thresholds_limits — specific numeric values (distances, sizes, volumes, etc.)
+3. exemptions — who or what is explicitly exempt and under what conditions
+4. penalties — fines, suspensions, criminal charges for specific violations
+5. required_procedures — mandatory step-by-step processes
+6. deadlines — timeframes, notice periods, renewal windows
+7. responsible_parties — who legally bears responsibility for each activity
+8. documentation_requirements — required records, permits, reports, logs
+9. enforcement_mechanisms — inspection authority, agency powers, complaint procedures
+10. comparative — how this law differs from a related law or neighboring state equivalent
+11. sequencing — the exact required order of mandatory procedural steps
+12. actor_responsibility — which specific party (contractor, inspector, owner, agency) is responsible
+13. numerical_precision — exact mandated figures: distances, timeframes, fees, thresholds
+14. forms_and_documentation — specific named forms/permits, who completes and retains them, and for how long
+15. change_over_time — what this law required before its most recent amendment vs. now
+
+For each slot, provide:
+- dimension: one of the 15 dimension names above
+- legal_fact_fingerprint: a unique plain-English description of exactly what legal fact this question will test, format: "[Citation] — [specific fact]"
+- question_hint: a one-line description of what the question should ask (e.g. "Ask what the minimum horizontal setback is between a septic tank and a well")
+- suggested_format: one of: multiple_choice, true_false, fill_in_blank
+
+Distribute the 25 slots as evenly as possible across the 15 dimensions. Every dimension must appear at least once.`,
+        add_context_from_internet: true,
+        model: "gemini_3_flash",
+        response_json_schema: {
+          type: "object",
+          properties: {
+            slots: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  dimension: { type: "string" },
+                  legal_fact_fingerprint: { type: "string" },
+                  question_hint: { type: "string" },
+                  suggested_format: { type: "string" }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const slots = (result?.slots || []).slice(0, 25).map(slot => ({
+        ...slot,
+        law_citation: law.citation,
+        law_title: law.title,
+        law_type: law.law_type,
+        trade: trades[0],
+        filled: false
+      }));
+      allSlots.push(...slots);
+    }
+
+    return allSlots;
+  };
+
+  // Build a targeted prompt to fill a single pre-planned slot
+  const buildSlotFillPrompt = (slot, jurisdiction, trades, existingFingerprints, existingCitations) => {
+    const fpList = existingFingerprints.length > 0
+      ? `\nDO NOT test any of these already-covered facts:\n${existingFingerprints.slice(0, 60).map((f, i) => `${i + 1}. ${f}`).join('\n')}\n`
+      : '';
+    const citList = existingCitations.length > 0
+      ? `\nDO NOT reuse these already-cited provisions:\n${existingCitations.slice(0, 40).map((c, i) => `${i + 1}. ${c}`).join('\n')}\n`
+      : '';
+
+    return `Generate exactly 1 professional licensing exam question for ${trades.join(', ')} in ${jurisdiction}.
+
+This question must fill a pre-planned slot with the following specification:
+- Law: ${slot.law_citation} (${slot.law_title})
+- Dimension: ${slot.dimension}
+- Legal fact to test: ${slot.legal_fact_fingerprint}
+- Question hint: ${slot.question_hint}
+- Preferred format: ${slot.suggested_format}
+${fpList}${citList}
+
+DIMENSION GUIDANCE for "${slot.dimension}":
+${slot.dimension === 'comparative' ? 'Ask how this law/requirement differs from a related law, a prior version, or an equivalent requirement in another state.' : ''}
+${slot.dimension === 'sequencing' ? 'Ask in what specific order mandatory steps must be completed. The question must name the exact steps and test the correct sequence.' : ''}
+${slot.dimension === 'actor_responsibility' ? 'Ask which specific party — contractor, subcontractor, inspector, property owner, or agency — bears legal responsibility for a specific requirement.' : ''}
+${slot.dimension === 'numerical_precision' ? 'Ask for an exact mandated figure: a distance, timeframe, fee, quantity, percentage, or threshold. The correct answer must be a specific number.' : ''}
+${slot.dimension === 'forms_and_documentation' ? 'Ask which specific named form or permit is required, who must complete it, who must retain it, and/or for how long it must be kept.' : ''}
+${slot.dimension === 'change_over_time' ? 'Ask what this law required BEFORE its most recent amendment versus what it requires NOW.' : ''}
+
+FORMATTING RULES:
+- question_type: use ${slot.suggested_format} if possible; otherwise choose the most appropriate format
+- For multiple_choice: provide exactly 4 options; correct_answer must match one option word-for-word
+- For true_false: correct_answer must be exactly "True" or "False"
+- For fill_in_blank: use _____ for the blank; do NOT reveal the answer in the question text
+- NEVER embed the answer in the question text
+- legal_fact_fingerprint: MUST match exactly: "${slot.legal_fact_fingerprint}"
+- law_citation: cite the specific sub-section within ${slot.law_citation}
+- law_type: "${slot.law_type}"
+- Keep explanation to 1 sentence
+- difficulty: beginner, intermediate, or advanced`;
+  };
+
+  // ────────────────────────────────────────────────────────────────────────────
+
   const normalizeForMatch = (str) =>
     (str || '')
       .toLowerCase()
