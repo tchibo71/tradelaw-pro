@@ -499,7 +499,7 @@ Return JSON only.`,
     }
   };
 
-  const buildPrompt = (trades, jurisdiction, count, existingCitations = [], ratioMap = {}, focusAreaText = '', taxonomy = [], usedDimensionFacts = {}, lastFormat = null, lastCogLevel = null, formatCounts = {}) => {
+  const buildPrompt = (trades, jurisdiction, count, existingCitations = [], ratioMap = {}, focusAreaText = '', taxonomy = [], usedDimensionFacts = {}, lastFormat = null, lastCogLevel = null, formatCounts = {}, existingFingerprints = []) => {
     const tradesLabel = trades.join(', ');
 
     const heavyRegTrades = [
