@@ -609,7 +609,7 @@ CRITICAL — NEVER EMBED THE ANSWER IN THE QUESTION TEXT:
 - For FILL IN BLANK: The blank _____ must replace the answer. The surrounding text must NOT reveal or restate what the answer is.
 - A question where the correct answer text already appears verbatim in the question text is INVALID and must not be generated.
 
-For each question: question_text, question_type (multiple_choice|true_false|fill_in_blank), correct_answer, options (4 for MC, [] otherwise), trade, law_type, law_citation, explanation (1 sentence), difficulty (beginner|intermediate|advanced).
+For each question: question_text, question_type (multiple_choice|true_false|fill_in_blank), correct_answer, options (4 for MC, [] otherwise), trade, law_type, law_citation, legal_fact_fingerprint, explanation (1 sentence), difficulty (beginner|intermediate|advanced).
 
 Keep explanations to 1 sentence maximum.`;
   };
