@@ -549,6 +549,28 @@ Return JSON only.`,
       ? `\n\nSPECIFIC FOCUS: The user wants questions specifically about: "${focusAreaText.trim()}"\nGenerate ALL ${count} questions on this specific topic area. Explore it in depth — different laws, different code sections, different scenarios within this topic.\n`
       : '';
 
+    // Format + cognitive rotation constraints
+    const formats = ['multiple_choice', 'true_false', 'fill_in_blank'];
+    const cogLevels = ['recall', 'application', 'exception', 'consequence'];
+    const maxPerFormat = count <= 5 ? 2 : Math.floor(count * 0.4); // max 2 per format in batch of 5, 40% in larger batches
+    const blockedFormats = formats.filter(f => (formatCounts[f] || 0) >= maxPerFormat);
+    const rotationSection = `
+
+FORMAT AND COGNITIVE ROTATION (MANDATORY):
+- question_type must be one of: multiple_choice, true_false, fill_in_blank
+- cognitive_level must be one of: recall, application, exception, consequence
+  - recall: asks "what is the rule / requirement / definition"
+  - application: presents a scenario and asks what law/requirement applies
+  - exception: asks who/what is exempt or excluded from a requirement
+  - consequence: asks what the penalty, outcome, or legal result is for a violation or action
+- NO two consecutive questions may share the SAME question_type AND SAME cognitive_level
+- Last question in previous batch had format="${lastFormat || 'none'}" and cognitive_level="${lastCogLevel || 'none'}" — the FIRST question of this batch must differ from at least one of these
+- Distribute evenly: aim for roughly equal spread across all 3 formats and all 4 cognitive levels
+- BANNED formats in this batch (already at limit): ${blockedFormats.length > 0 ? blockedFormats.join(', ') : 'none'}
+- Maximum allowed per format in this batch of ${count}: ${maxPerFormat}
+- Set "cognitive_level" field on every question`;
+
+
     return `Generate exactly ${count} realistic professional certification exam questions for ${tradesLabel} professionals in ${jurisdiction}.${focusSection}${taxonomySection}
 
 CRITICAL ACCURACY REQUIREMENT: Only include facts you are CERTAIN are correct based on REAL, currently-in-force ${jurisdiction} laws. DO NOT invent specific numbers (hours, fees, days, percentages) unless you know the exact statute or regulation that states it.
