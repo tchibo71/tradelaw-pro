@@ -212,6 +212,9 @@ export default function GenerateQuestions() {
   const [repairing, setRepairing] = useState(false);
   const [repairResults, setRepairResults] = useState(null);
   const [repairProgress, setRepairProgress] = useState({ current: 0, total: 0, stage: '' });
+  const [disambiguating, setDisambiguating] = useState(false);
+  const [disambigResults, setDisambigResults] = useState(null);
+  const [disambigProgress, setDisambigProgress] = useState({ current: 0, total: 0, stage: '' });
   const [masterPlanData, setMasterPlanData] = useState(null);
   const tradeRef = useRef(null);
   const queryClient = useQueryClient();
