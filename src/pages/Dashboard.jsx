@@ -24,6 +24,13 @@ export default function Dashboard() {
   const [user, setUser] = useState(null);
   const queryClient = useQueryClient();
 
+  const deleteInBatches = async (entity, ids) => {
+    for (let i = 0; i < ids.length; i += 3) {
+      await Promise.all(ids.slice(i, i + 3).map(id => entity.delete(id).catch(() => {})));
+      if (i + 3 < ids.length) await new Promise(r => setTimeout(r, 400));
+    }
+  };
+
   const { data: sessions = [] } = useQuery({
     queryKey: ['sessions', user?.email],
     queryFn: () => base44.entities.StudySession.filter({ created_by: user.email }),
