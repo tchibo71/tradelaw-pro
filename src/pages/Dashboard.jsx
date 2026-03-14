@@ -110,9 +110,7 @@ export default function Dashboard() {
             color="blue"
             onReset={async () => {
               const all = await base44.entities.QuestionAttempt.filter({ created_by: user.email });
-              for (let i = 0; i < all.length; i += 5) {
-                await Promise.all(all.slice(i, i + 5).map(a => base44.entities.QuestionAttempt.delete(a.id)));
-              }
+              await deleteInBatches(base44.entities.QuestionAttempt, all.map(a => a.id));
               queryClient.invalidateQueries(['attempts']);
             }}
           />
@@ -123,9 +121,7 @@ export default function Dashboard() {
             color="green"
             onReset={async () => {
               const all = await base44.entities.QuestionAttempt.filter({ created_by: user.email });
-              for (let i = 0; i < all.length; i += 5) {
-                await Promise.all(all.slice(i, i + 5).map(a => base44.entities.QuestionAttempt.delete(a.id)));
-              }
+              await deleteInBatches(base44.entities.QuestionAttempt, all.map(a => a.id));
               queryClient.invalidateQueries(['attempts']);
             }}
           />
@@ -136,9 +132,7 @@ export default function Dashboard() {
             color="gold"
             onReset={async () => {
               const all = await base44.entities.StudySession.filter({ created_by: user.email });
-              for (let i = 0; i < all.length; i += 5) {
-                await Promise.all(all.slice(i, i + 5).map(s => base44.entities.StudySession.delete(s.id)));
-              }
+              await deleteInBatches(base44.entities.StudySession, all.map(s => s.id));
               queryClient.invalidateQueries(['sessions']);
             }}
           />
@@ -149,9 +143,7 @@ export default function Dashboard() {
             color="purple"
             onReset={async () => {
               const all = await base44.entities.ReviewQueue.filter({ created_by: user.email });
-              for (let i = 0; i < all.length; i += 5) {
-                await Promise.all(all.slice(i, i + 5).map(r => base44.entities.ReviewQueue.delete(r.id)));
-              }
+              await deleteInBatches(base44.entities.ReviewQueue, all.map(r => r.id));
               queryClient.invalidateQueries(['reviewQueue']);
             }}
           />
