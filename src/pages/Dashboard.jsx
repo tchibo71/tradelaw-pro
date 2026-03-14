@@ -103,7 +103,9 @@ export default function Dashboard() {
             color="blue"
             onReset={async () => {
               const all = await base44.entities.QuestionAttempt.filter({ created_by: user.email });
-              await Promise.all(all.map(a => base44.entities.QuestionAttempt.delete(a.id)));
+              for (let i = 0; i < all.length; i += 5) {
+                await Promise.all(all.slice(i, i + 5).map(a => base44.entities.QuestionAttempt.delete(a.id)));
+              }
               queryClient.invalidateQueries(['attempts']);
             }}
           />
@@ -114,7 +116,9 @@ export default function Dashboard() {
             color="green"
             onReset={async () => {
               const all = await base44.entities.QuestionAttempt.filter({ created_by: user.email });
-              await Promise.all(all.map(a => base44.entities.QuestionAttempt.delete(a.id)));
+              for (let i = 0; i < all.length; i += 5) {
+                await Promise.all(all.slice(i, i + 5).map(a => base44.entities.QuestionAttempt.delete(a.id)));
+              }
               queryClient.invalidateQueries(['attempts']);
             }}
           />
@@ -125,7 +129,9 @@ export default function Dashboard() {
             color="gold"
             onReset={async () => {
               const all = await base44.entities.StudySession.filter({ created_by: user.email });
-              await Promise.all(all.map(s => base44.entities.StudySession.delete(s.id)));
+              for (let i = 0; i < all.length; i += 5) {
+                await Promise.all(all.slice(i, i + 5).map(s => base44.entities.StudySession.delete(s.id)));
+              }
               queryClient.invalidateQueries(['sessions']);
             }}
           />
@@ -136,7 +142,9 @@ export default function Dashboard() {
             color="purple"
             onReset={async () => {
               const all = await base44.entities.ReviewQueue.filter({ created_by: user.email });
-              await Promise.all(all.map(r => base44.entities.ReviewQueue.delete(r.id)));
+              for (let i = 0; i < all.length; i += 5) {
+                await Promise.all(all.slice(i, i + 5).map(r => base44.entities.ReviewQueue.delete(r.id)));
+              }
               queryClient.invalidateQueries(['reviewQueue']);
             }}
           />
