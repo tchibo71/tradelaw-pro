@@ -101,24 +101,44 @@ export default function Dashboard() {
             label="Questions Answered"
             value={totalQuestions}
             color="blue"
+            onReset={async () => {
+              const all = await base44.entities.QuestionAttempt.filter({ created_by: user.email });
+              await Promise.all(all.map(a => base44.entities.QuestionAttempt.delete(a.id)));
+              queryClient.invalidateQueries(['attempts']);
+            }}
           />
           <StatsCard
             icon={Target}
             label="Accuracy Rate"
             value={`${accuracy}%`}
             color="green"
+            onReset={async () => {
+              const all = await base44.entities.QuestionAttempt.filter({ created_by: user.email });
+              await Promise.all(all.map(a => base44.entities.QuestionAttempt.delete(a.id)));
+              queryClient.invalidateQueries(['attempts']);
+            }}
           />
           <StatsCard
             icon={Trophy}
             label="Study Sessions"
             value={totalSessions}
             color="gold"
+            onReset={async () => {
+              const all = await base44.entities.StudySession.filter({ created_by: user.email });
+              await Promise.all(all.map(s => base44.entities.StudySession.delete(s.id)));
+              queryClient.invalidateQueries(['sessions']);
+            }}
           />
           <StatsCard
             icon={TrendingUp}
             label="Need Review"
             value={questionsToReview}
             color="purple"
+            onReset={async () => {
+              const all = await base44.entities.ReviewQueue.filter({ created_by: user.email });
+              await Promise.all(all.map(r => base44.entities.ReviewQueue.delete(r.id)));
+              queryClient.invalidateQueries(['reviewQueue']);
+            }}
           />
         </div>
 
