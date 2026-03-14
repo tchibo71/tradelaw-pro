@@ -907,6 +907,32 @@ ${JSON.stringify(batch.map((q, idx) => ({
               )}
             </div>
 
+            {/* Disambiguate */}
+            <div className="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
+              <p className="text-sm font-semibold text-yellow-900 mb-2">⚖️ Fix Ambiguous Questions</p>
+              <p className="text-xs text-yellow-800 mb-3">
+                Audits all multiple-choice questions and rewrites any where two answer choices could both be legally correct (e.g. two bond amounts from the same law). Adds triggering circumstance to the question stem to make the correct answer unambiguous.
+              </p>
+              <Button onClick={disambiguateExistingQuestions} disabled={disambiguating} variant="outline" className="border-yellow-400 text-yellow-900 hover:bg-yellow-100 w-full">
+                {disambiguating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Auditing...</> : 'Audit & Fix Ambiguous Questions'}
+              </Button>
+              {disambiguating && disambigProgress.total > 0 && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-yellow-800">{disambigProgress.stage}</p>
+                  <Progress value={Math.round((disambigProgress.current / disambigProgress.total) * 100)} className="h-2" />
+                  <p className="text-xs text-yellow-600 text-right">{disambigProgress.current}/{disambigProgress.total}</p>
+                </div>
+              )}
+              {disambiguating && disambigProgress.total === 0 && <p className="text-xs text-yellow-800 mt-2">{disambigProgress.stage}</p>}
+              {disambigResults && (
+                <p className={`text-sm mt-2 font-medium ${disambigResults.success ? 'text-green-800' : 'text-red-800'}`}>
+                  {disambigResults.success
+                    ? `✓ Audited ${disambigResults.total} MC questions — rewrote ${disambigResults.rewritten} ambiguous stems.`
+                    : `Error: ${disambigResults.error}`}
+                </p>
+              )}
+            </div>
+
             {/* Repair */}
             <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
               <p className="text-sm font-semibold text-orange-900 mb-2">🔧 Fix Existing Questions</p>
