@@ -58,6 +58,12 @@ const answersMatch = (userAns, correctAns) => {
   // Try converting correct number → word and compare
   const cAsWord = numberToWord(cCore);
   if (cAsWord !== null && (cAsWord === uCore || cAsWord === u)) return true;
+
+  // Check if all words of the correct answer are contained in the user's answer
+  const cWords = cCore.split(/\s+/).filter(Boolean);
+  const uWords = uCore.split(/\s+/).filter(Boolean);
+  if (cWords.length > 0 && cWords.every(w => uWords.includes(w))) return true;
+
   return false;
 };
 
