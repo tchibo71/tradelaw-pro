@@ -12,17 +12,11 @@ const normalizeForMatch = (str) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-// Two strings match if normalized equal OR one contains all words of the other
+// For multiple choice, only exact normalized match is valid
 const answersMatch = (a, b) => {
   const na = normalizeForMatch(a);
   const nb = normalizeForMatch(b);
-  if (na === nb) return true;
-  // fallback: word-set overlap (handles slight rephrasing)
-  const wa = new Set(na.split(' ').filter(Boolean));
-  const wb = new Set(nb.split(' ').filter(Boolean));
-  const intersection = [...wa].filter(w => wb.has(w)).length;
-  const minSize = Math.min(wa.size, wb.size);
-  return minSize > 0 && intersection / minSize >= 0.9;
+  return na === nb;
 };
 
 export default function MultipleChoiceCard({ question, onAnswer }) {
