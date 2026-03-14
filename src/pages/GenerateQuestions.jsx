@@ -107,7 +107,11 @@ const step2PlanSlots = (law, jurisdiction, trades) =>
 Law: ${law.citation} — ${law.title} (${law.law_type})
 Jurisdiction: ${jurisdiction}, Trade(s): ${trades.join(', ')}
 Dimensions to cover: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing
-Per slot: dimension, legal_fact_fingerprint ("[Citation] — [specific fact]"), question_hint (one line), suggested_format (multiple_choice|true_false|fill_in_blank)`,
+
+DISAMBIGUATION RULE — CRITICAL:
+If this law contains multiple dollar amounts, timeframes, thresholds, or numerical values that differ based on triggering circumstance (e.g. initial licensing vs. reinstatement after suspension, different license tiers, different covered parties), each distinct amount/trigger MUST be its own separate slot with a unique legal_fact_fingerprint that includes the specific triggering circumstance. NEVER combine two distinct statutory amounts into a single slot. The question_hint must identify the specific trigger (e.g. "initial applicant bond before authorization" vs. "reinstatement bond after permit revocation").
+
+Per slot: dimension, legal_fact_fingerprint ("[Citation] — [specific triggering circumstance] — [specific fact/amount]"), question_hint (one line specifying the exact trigger), suggested_format (multiple_choice|true_false|fill_in_blank)`,
     add_context_from_internet: false,
     model: "gemini_3_flash",
     response_json_schema: {
