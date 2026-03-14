@@ -462,6 +462,84 @@ Return results array with { index, accurate, reason } per question.`,
     return (result?.results || []).filter(r => !r.accurate && batch[r.index]).map(r => batch[r.index].id);
   };
 
+  const disambiguateExistingQuestions = async () => {
+    setDisambiguating(true);
+    setDisambigResults(null);
+    setDisambigProgress({ current: 0, total: 0, stage: 'Loading questions...' });
+    try {
+      const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
+      const mcQuestions = allQuestions.filter(q => q.question_type === 'multiple_choice' && q.options?.length >= 2);
+      const BATCH = 5;
+      const totalBatches = Math.ceil(mcQuestions.length / BATCH);
+      let deleted = 0;
+      let rewritten = 0;
+
+      for (let i = 0; i < mcQuestions.length; i += BATCH) {
+        const batch = mcQuestions.slice(i, i + BATCH);
+        const batchNum = Math.floor(i / BATCH) + 1;
+        setDisambigProgress({ current: batchNum, total: totalBatches, stage: `Auditing batch ${batchNum}/${totalBatches} for ambiguous questions...` });
+
+        const result = await base44.integrations.Core.InvokeLLM({
+          prompt: `Audit these multiple-choice exam questions for the DISAMBIGUATION STANDARD:
+A question FAILS if any answer choice other than the stated correct_answer could also be legally correct under any reasonable reading of the question stem — e.g. if the stem asks about a bond amount but doesn't specify the triggering circumstance (initial application vs. reinstatement after revocation), and two options are both valid bond amounts from the same law.
+
+For each question that FAILS: provide a rewritten question_text that adds the specific triggering circumstance to the stem so only one answer is correct. Also verify correct_answer is still correct after rewrite.
+For each question that PASSES: mark as ok.
+
+Questions:
+${JSON.stringify(batch.map((q, idx) => ({
+  index: idx,
+  id: q.id,
+  question_text: q.question_text,
+  options: q.options,
+  correct_answer: q.correct_answer,
+  law_citation: q.law_citation || '',
+  trade: q.trade,
+  jurisdiction: q.jurisdiction
+})), null, 2)}`,
+          add_context_from_internet: true,
+          model: "gemini_3_pro",
+          response_json_schema: {
+            type: "object",
+            properties: {
+              results: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    index: { type: "number" },
+                    status: { type: "string" },
+                    rewritten_question_text: { type: "string" },
+                    correct_answer: { type: "string" }
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        for (const r of (result?.results || [])) {
+          const q = batch[r.index];
+          if (!q) continue;
+          if (r.status === 'fail' && r.rewritten_question_text) {
+            await base44.entities.LawQuestion.update(q.id, {
+              question_text: r.rewritten_question_text,
+              ...(r.correct_answer ? { correct_answer: r.correct_answer } : {})
+            });
+            rewritten++;
+          }
+        }
+      }
+
+      setDisambigResults({ success: true, total: mcQuestions.length, rewritten, deleted });
+    } catch (err) {
+      setDisambigResults({ success: false, error: err.message });
+    } finally {
+      setDisambiguating(false);
+      setDisambigProgress({ current: 0, total: 0, stage: '' });
+    }
+  };
+
   const repairExistingQuestions = async () => {
     setRepairing(true);
     setRepairResults(null);
