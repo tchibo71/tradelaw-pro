@@ -33,9 +33,12 @@ const numberToWord = (str) => {
 // Strip trailing units (days, feet, ft, inches, etc.) to get the core value
 const stripUnits = (str) => str.trim().toLowerCase().replace(/\s*(days?|feet|foot|ft|inches?|in|meters?|m|hours?|hrs?|weeks?|months?|years?|gallons?|gal|pounds?|lbs?|percent|%)\s*$/i, '').trim();
 
+// Strip currency symbols and formatting ($ , commas)
+const stripCurrency = (str) => str.replace(/[$,]/g, '').trim();
+
 const answersMatch = (userAns, correctAns) => {
-  const u = userAns.trim().toLowerCase();
-  const c = correctAns.trim().toLowerCase();
+  const u = stripCurrency(userAns.trim().toLowerCase());
+  const c = stripCurrency(correctAns.trim().toLowerCase());
   if (u === c) return true;
 
   // Strip units and compare cores
