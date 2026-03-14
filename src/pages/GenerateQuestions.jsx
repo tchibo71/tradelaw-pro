@@ -153,7 +153,13 @@ Rules:
 - For T/F: correct_answer is exactly "True" or "False"
 - For fill_in_blank: use _____, never reveal answer in question text
 - NEVER embed the answer in the question text
-- 1-sentence explanation only`,
+- 1-sentence explanation only
+
+DISAMBIGUATION RULES — NON-NEGOTIABLE:
+1. The question stem MUST specify the exact triggering circumstance so only ONE answer is correct. Example: if testing a bond amount, the stem must state whether it applies to initial applicants, reinstatement after revocation, a specific license tier, etc.
+2. NO two answer choices may both be legally correct under any reasonable reading of the question as written. If the law has a $15,000 bond for initial applicants AND a $30,000 bond for reinstatement, a question about one must name the scenario so the other amount is clearly wrong.
+3. For MC questions: verify each wrong option is unambiguously wrong given the question stem. Do NOT use other valid statutory amounts from the same law as distractors unless the question stem clearly excludes them.
+4. The question stem must contain enough context (who, when, what circumstance) that a knowledgeable test-taker can identify the single correct answer without guessing which statute section is being tested.`,
     add_context_from_internet: false,
     model: "gemini_3_flash",
     response_json_schema: {
