@@ -356,63 +356,9 @@ export default function TradeSelector({ selectedTrades, onSelectionChange, juris
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (jurisdiction && jurisdiction !== 'Federal') {
-      checkTradeRegulations();
-    } else {
-      setRegulatedTrades(new Set(TRADES)); // Federal = all trades available
-      setRegulationChecked(true);
-    }
+    setRegulatedTrades(new Set(TRADES));
+    setRegulationChecked(true);
   }, [jurisdiction]);
-
-  const checkTradeRegulations = async () => {
-    if (!jurisdiction) return;
-    
-    setCheckingRegulation(true);
-    setRegulationChecked(false);
-    
-    try {
-      const prompt = `For ${jurisdiction}, which of these trades/professions require licensing, certification, or registration?
-
-Return a JSON object with a "regulated_trades" array containing ONLY the exact trade names (from the list below) that require some form of licensing, certification, registration, or permit in ${jurisdiction}.
-
-Trades list:
-${TRADES.join(', ')}
-
-Be thorough - include trades that require:
-- State license
-- State certification
-- State registration  
-- Contractor license
-- Professional license
-- Any form of permit or credential
-
-Return ONLY trades that are actually regulated in ${jurisdiction}. Do not include trades with no state requirements.`;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: prompt,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            regulated_trades: {
-              type: "array",
-              items: { type: "string" }
-            }
-          }
-        }
-      });
-
-      setRegulatedTrades(new Set(response.regulated_trades || []));
-      setRegulationChecked(true);
-    } catch (error) {
-      console.error('Error checking regulations:', error);
-      // On error, assume all trades are available
-      setRegulatedTrades(new Set(TRADES));
-      setRegulationChecked(true);
-    } finally {
-      setCheckingRegulation(false);
-    }
-  };
 
   const toggleTrade = (trade) => {
     const updated = selectedTrades.includes(trade)
