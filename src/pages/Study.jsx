@@ -155,14 +155,13 @@ export default function Study() {
       repetition_number: 1
     });
 
+    updateReviewQueueMutation.mutate({ questionId: question.id, isCorrect });
     if (isCorrect) {
       updateSessionMutation.mutate({
         sessionId: currentSession.id,
         data: { correct_answers: currentSession.correct_answers + 1 }
       });
       setCurrentSession(prev => ({ ...prev, correct_answers: prev.correct_answers + 1 }));
-    } else {
-      updateReviewQueueMutation.mutate({ questionId: question.id, isCorrect });
     }
 
     // Advance UI immediately
