@@ -88,7 +88,7 @@ const answersMatch = (userAns, correctAns) => {
   }).length;
   
   const matchRatio = matchedCount / cWords.length;
-  if (matchRatio >= 0.70) return true;
+  if (matchRatio >= 0.93) return true;
 
   return false;
 };
