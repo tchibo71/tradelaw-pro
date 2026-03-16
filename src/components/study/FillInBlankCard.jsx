@@ -59,10 +59,36 @@ const answersMatch = (userAns, correctAns) => {
   const cAsWord = numberToWord(cCore);
   if (cAsWord !== null && (cAsWord === uCore || cAsWord === u)) return true;
 
-  // Check if all words of the correct answer are contained in the user's answer
-  const cWords = cCore.split(/\s+/).filter(Boolean);
-  const uWords = uCore.split(/\s+/).filter(Boolean);
-  if (cWords.length > 0 && cWords.every(w => uWords.includes(w))) return true;
+  // Filter out common stop words, then check meaningful word overlap
+  const STOP_WORDS = new Set(['a','an','the','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','has','have','had','that','this','it','its','as','if','so','do','did','not','no','nor','yet','both','either','each','few','more','most','other','such','than','too','very','can','will','just','there','their','they','them','these','those','into','onto','upon','about','above','below','after','before','since','until','while','where','when','who','which','what','how','any','all','also','may','must','shall','should','would','could','said','then','than','whether']);
+  
+  const cWords = cCore.split(/\s+/).filter(w => w.length > 1 && !STOP_WORDS.has(w));
+  const uWords = new Set(uCore.split(/\s+/).filter(Boolean));
+  
+  if (cWords.length === 0) return false;
+  
+  // Also expand user words with simple stem variants (notification↔notice, etc.)
+  const expandWord = (w) => {
+    const variants = [w];
+    if (w.endsWith('ification')) variants.push(w.replace('ification','ice'), w.replace('ification','ify'));
+    if (w.endsWith('ice')) variants.push(w.replace('ice','ification'));
+    if (w.endsWith('ment')) variants.push(w.replace('ment',''));
+    if (w.endsWith('tion')) variants.push(w.replace('tion','t'), w.replace('tion','te'));
+    if (w.endsWith('ing')) variants.push(w.replace('ing',''), w.replace('ing','e'));
+    if (w.endsWith('ed')) variants.push(w.replace('ed',''), w.replace('ed','e'));
+    return variants;
+  };
+  
+  const matchedCount = cWords.filter(cw => {
+    if (uWords.has(cw)) return true;
+    // partial match: user word starts with correct word stem (min 5 chars)
+    if (cw.length >= 5 && [...uWords].some(uw => uw.startsWith(cw.slice(0,5)))) return true;
+    // expanded variants
+    return expandWord(cw).some(v => uWords.has(v));
+  }).length;
+  
+  const matchRatio = matchedCount / cWords.length;
+  if (matchRatio >= 0.70) return true;
 
   return false;
 };
