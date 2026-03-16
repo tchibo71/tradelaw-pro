@@ -132,6 +132,10 @@ export default function Study() {
           priority_score: 2,
           last_attempt_date: new Date().toISOString()
         });
+      } else {
+        // Remove from review queue when answered correctly
+        const rqId = reviewQueueMap[questionId];
+        if (rqId) return base44.entities.ReviewQueue.delete(rqId).catch(() => {});
       }
     }
   });
