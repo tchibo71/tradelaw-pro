@@ -469,7 +469,7 @@ Return results array with { index, accurate, reason } per question.`,
     try {
       const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
       const mcQuestions = allQuestions.filter(q => q.question_type === 'multiple_choice' && q.options?.length >= 2);
-      const BATCH = 3;
+      const BATCH = 10;
       const totalBatches = Math.ceil(mcQuestions.length / BATCH);
       let deleted = 0;
       let rewritten = 0;
@@ -477,40 +477,46 @@ Return results array with { index, accurate, reason } per question.`,
       for (let i = 0; i < mcQuestions.length; i += BATCH) {
         const batch = mcQuestions.slice(i, i + BATCH);
         const batchNum = Math.floor(i / BATCH) + 1;
-        setDisambigProgress({ current: batchNum, total: totalBatches, stage: `Auditing batch ${batchNum}/${totalBatches} for ambiguous questions...` });
+        setDisambigProgress({ current: batchNum, total: totalBatches, stage: `Auditing batch ${batchNum}/${totalBatches} (~${Math.round((batchNum/totalBatches)*100)}%)...` });
 
-        for (let j = 0; j < batch.length; j++) {
-          const q = batch[j];
-          const result = await base44.integrations.Core.InvokeLLM({
-            prompt: `You are auditing a licensing exam question for ambiguity.
+        const result = await base44.integrations.Core.InvokeLLM({
+          prompt: `Audit these ${batch.length} multiple-choice exam questions for AMBIGUITY. A question FAILS if any wrong answer option could also be legally correct under a reasonable reading of the stem (e.g. stem omits triggering circumstance like "initial applicant" vs "reinstatement").
 
-Question: "${q.question_text}"
-Options: ${(q.options || []).map((o, i) => `${i+1}) ${o}`).join(' | ')}
-Correct answer: "${q.correct_answer}"
-Law: ${q.law_citation || 'unknown'} | Trade: ${q.trade} | Jurisdiction: ${q.jurisdiction}
+For each question that FAILS: provide the index (0-based) and a rewritten question_text that adds the missing context so only the correct_answer is right.
+Only include FAILING questions in your response — omit passing ones entirely.
 
-TASK: Does this question FAIL the disambiguation standard? It FAILS if any option other than the correct_answer could also be legally correct under a reasonable reading of the question stem (e.g. the stem omits a triggering circumstance like "initial applicant" vs "reinstatement after revocation" that would make a different amount correct).
+${batch.map((q, idx) => `[${idx}] "${q.question_text}"
+Options: ${(q.options||[]).join(' | ')}
+Correct: "${q.correct_answer}"
+Law: ${q.law_citation||'?'} | ${q.jurisdiction}`).join('\n\n')}
 
-If it FAILS: rewrite the question_text to add the missing triggering circumstance so only the stated correct_answer is right. Keep the rewrite concise.
-If it PASSES: set rewritten to null.
-
-Respond with JSON only: { "fails": true/false, "rewritten": "new question text or null" }`,
-            add_context_from_internet: true,
-            model: "gemini_3_flash",
-            response_json_schema: {
-              type: "object",
-              properties: {
-                fails: { type: "boolean" },
-                rewritten: { type: "string" }
-              },
-              required: ["fails"]
-            }
-          });
-
-          if (result?.fails && result?.rewritten) {
-            await base44.entities.LawQuestion.update(q.id, { question_text: result.rewritten });
-            rewritten++;
+Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } ] }`,
+          add_context_from_internet: false,
+          model: "gemini_3_flash",
+          response_json_schema: {
+            type: "object",
+            properties: {
+              fixes: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    index: { type: "number" },
+                    rewritten: { type: "string" }
+                  },
+                  required: ["index", "rewritten"]
+                }
+              }
+            },
+            required: ["fixes"]
           }
+        });
+
+        for (const fix of (result?.fixes || [])) {
+          const q = batch[fix.index];
+          if (!q || !fix.rewritten) continue;
+          await base44.entities.LawQuestion.update(q.id, { question_text: fix.rewritten });
+          rewritten++;
         }
       }
 
