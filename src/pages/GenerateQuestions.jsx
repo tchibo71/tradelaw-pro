@@ -469,7 +469,7 @@ Return results array with { index, accurate, reason } per question.`,
     try {
       const allQuestions = await base44.entities.LawQuestion.list(null, 1000);
       const mcQuestions = allQuestions.filter(q => q.question_type === 'multiple_choice' && q.options?.length >= 2);
-      const BATCH = 5;
+      const BATCH = 3;
       const totalBatches = Math.ceil(mcQuestions.length / BATCH);
       let deleted = 0;
       let rewritten = 0;
@@ -479,53 +479,36 @@ Return results array with { index, accurate, reason } per question.`,
         const batchNum = Math.floor(i / BATCH) + 1;
         setDisambigProgress({ current: batchNum, total: totalBatches, stage: `Auditing batch ${batchNum}/${totalBatches} for ambiguous questions...` });
 
-        const result = await base44.integrations.Core.InvokeLLM({
-          prompt: `Audit these multiple-choice exam questions for the DISAMBIGUATION STANDARD:
-A question FAILS if any answer choice other than the stated correct_answer could also be legally correct under any reasonable reading of the question stem — e.g. if the stem asks about a bond amount but doesn't specify the triggering circumstance (initial application vs. reinstatement after revocation), and two options are both valid bond amounts from the same law.
+        for (let j = 0; j < batch.length; j++) {
+          const q = batch[j];
+          const result = await base44.integrations.Core.InvokeLLM({
+            prompt: `You are auditing a licensing exam question for ambiguity.
 
-For each question that FAILS: provide a rewritten question_text that adds the specific triggering circumstance to the stem so only one answer is correct. Also verify correct_answer is still correct after rewrite.
-For each question that PASSES: mark as ok.
+Question: "${q.question_text}"
+Options: ${(q.options || []).map((o, i) => `${i+1}) ${o}`).join(' | ')}
+Correct answer: "${q.correct_answer}"
+Law: ${q.law_citation || 'unknown'} | Trade: ${q.trade} | Jurisdiction: ${q.jurisdiction}
 
-Questions:
-${JSON.stringify(batch.map((q, idx) => ({
-  index: idx,
-  id: q.id,
-  question_text: q.question_text,
-  options: q.options,
-  correct_answer: q.correct_answer,
-  law_citation: q.law_citation || '',
-  trade: q.trade,
-  jurisdiction: q.jurisdiction
-})), null, 2)}`,
-          add_context_from_internet: true,
-          model: "gemini_3_pro",
-          response_json_schema: {
-            type: "object",
-            properties: {
-              results: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    index: { type: "number" },
-                    status: { type: "string" },
-                    rewritten_question_text: { type: "string" },
-                    correct_answer: { type: "string" }
-                  }
-                }
-              }
+TASK: Does this question FAIL the disambiguation standard? It FAILS if any option other than the correct_answer could also be legally correct under a reasonable reading of the question stem (e.g. the stem omits a triggering circumstance like "initial applicant" vs "reinstatement after revocation" that would make a different amount correct).
+
+If it FAILS: rewrite the question_text to add the missing triggering circumstance so only the stated correct_answer is right. Keep the rewrite concise.
+If it PASSES: set rewritten to null.
+
+Respond with JSON only: { "fails": true/false, "rewritten": "new question text or null" }`,
+            add_context_from_internet: true,
+            model: "gemini_3_flash",
+            response_json_schema: {
+              type: "object",
+              properties: {
+                fails: { type: "boolean" },
+                rewritten: { type: "string" }
+              },
+              required: ["fails"]
             }
-          }
-        });
+          });
 
-        for (const r of (result?.results || [])) {
-          const q = batch[r.index];
-          if (!q) continue;
-          if (r.status === 'fail' && r.rewritten_question_text) {
-            await base44.entities.LawQuestion.update(q.id, {
-              question_text: r.rewritten_question_text,
-              ...(r.correct_answer ? { correct_answer: r.correct_answer } : {})
-            });
+          if (result?.fails && result?.rewritten) {
+            await base44.entities.LawQuestion.update(q.id, { question_text: result.rewritten });
             rewritten++;
           }
         }
