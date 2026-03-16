@@ -49,6 +49,11 @@ export default function Study() {
     ]);
     const filteredQuestions = questionsByJurisdiction.filter(q => studyTrades.includes(q.trade));
 
+    // Build a map of question_id -> reviewQueue record id for fast lookup
+    const rqMap = {};
+    for (const r of reviewQueue) rqMap[r.question_id] = r.id;
+    setReviewQueueMap(rqMap);
+
     // Sort questions based on spaced repetition
     const sortedQuestions = sortQuestionsForSpacedRepetition(filteredQuestions, attempts, reviewQueue);
     
