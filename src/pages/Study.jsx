@@ -17,6 +17,7 @@ export default function Study() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions, setQuestions] = useState([]);
   const [startTime, setStartTime] = useState(null);
+  const [reviewQueueMap, setReviewQueueMap] = useState({});
   const queryClient = useQueryClient();
 
   useEffect(() => {
