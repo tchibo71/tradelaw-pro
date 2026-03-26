@@ -93,7 +93,7 @@ IMPORTANT: Do NOT systematically score regulations lower than statutes. A detail
 // STEP 2 — web search OFF, uses only law name/citation as context
 const step2PlanSlots = (law, jurisdiction, trades) =>
   base44.integrations.Core.InvokeLLM({
-    prompt: `Pre-define ${SLOTS_PER_LAW} unique exam question slots for this law.
+    prompt: `Pre-define up to 20 unique exam question slots for this law.
 Law: ${law.citation} — ${law.title} (${law.law_type})
 Jurisdiction: ${jurisdiction}, Trade(s): ${trades.join(', ')}
 Dimensions to cover: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing
@@ -698,8 +698,8 @@ Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } 
                       if (selectedTrades.length === 0 || (jurisdictionMode === 'state' && !selectedJurisdiction)) return;
                       setLawRegistryLoading(true);
                       setLawRegistry([]);
-                      const laws = await fetchApplicableLaws(selectedTrades, jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction, jurisdictionMode);
-                      setLawRegistry(laws);
+                      const r = await step1EnumerateLaws(selectedTrades, jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction, jurisdictionMode);
+                      setLawRegistry(r?.laws || []);
                       setLawRegistryLoading(false);
                     }}
                     disabled={lawRegistryLoading || selectedTrades.length === 0 || (jurisdictionMode === 'state' && !selectedJurisdiction)}
