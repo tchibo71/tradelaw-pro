@@ -15,8 +15,16 @@ import { createPageUrl } from '../utils';
 
 const PLAN_CONCURRENCY = 4;  // laws planned in parallel (Step 2)
 const FILL_CONCURRENCY = 4;  // slots filled in parallel (Step 3)
-const SLOTS_PER_LAW = 10;
 const QUESTIONS_PER_LAW = 8;
+
+// Dynamic slot cap: complexity 1–10 → 5–20 slots
+// Regulations get a +2 base bonus so they're never starved vs thin statutes
+const slotsForLaw = (law) => {
+  const rawScore = law.complexity_score ?? 5;
+  const bonus = law.law_type === 'regulation' ? 2 : 0;
+  const score = Math.min(10, rawScore + bonus);
+  return Math.round(5 + (score / 10) * 15);
+};
 
 const STATES = [
   "Federal", "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
@@ -49,7 +57,15 @@ const step1EnumerateLaws = (trades, jurisdiction, mode) => {
     prompt: `List applicable laws and regulations for these licensed trades in scope: ${scope}
 Trades: ${trades.join(', ')}
 Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties.
-For each: citation (exact), title (short), law_type ("statute"|"regulation"), trade (one of the input trade names).`,
+For each law/regulation, provide:
+- citation (exact)
+- title (short)
+- law_type ("statute" | "regulation")
+- trade (one of the input trade names)
+- complexity_score: integer 1–10 reflecting how many distinct testable facts, thresholds, numerical limits, or sub-requirements the document contains. A thin 3-section statute = 2–3; a dense regulatory chapter with dozens of specific technical requirements = 8–10.
+- estimated_sections: your best estimate of the number of distinct sections or sub-parts in this document.
+
+IMPORTANT: Do NOT systematically score regulations lower than statutes. A detailed technical regulation (e.g. septic system soil absorption requirements, well setback distances) should score higher than a short licensing statute even if the statute is more "official". Score based on testable content density, not document type.`,
     add_context_from_internet: true,
     model: "gemini_3_flash",
     response_json_schema: {
@@ -63,7 +79,9 @@ For each: citation (exact), title (short), law_type ("statute"|"regulation"), tr
               citation: { type: "string" },
               title: { type: "string" },
               law_type: { type: "string" },
-              trade: { type: "string" }
+              trade: { type: "string" },
+              complexity_score: { type: "number" },
+              estimated_sections: { type: "number" }
             }
           }
         }
@@ -247,8 +265,14 @@ export default function GenerateQuestions() {
       );
 
       // ── STEP 2: Plan slots for each law (web search OFF) ─────────────────────
+      // Sort laws by effective complexity (regulations get +2 bonus) so denser laws are processed first
+      const scoredLaws = [...laws].sort((a, b) => {
+        const scoreA = Math.min(10, (a.complexity_score ?? 5) + (a.law_type === 'regulation' ? 2 : 0));
+        const scoreB = Math.min(10, (b.complexity_score ?? 5) + (b.law_type === 'regulation' ? 2 : 0));
+        return scoreB - scoreA;
+      });
       const lawsNeeded = Math.max(1, Math.ceil(questionCount / QUESTIONS_PER_LAW));
-      const lawsToProcess = laws.slice(0, lawsNeeded);
+      const lawsToProcess = scoredLaws.slice(0, lawsNeeded);
       const allSlots = [];
 
       for (let i = 0; i < lawsToProcess.length; i += PLAN_CONCURRENCY) {
@@ -262,7 +286,8 @@ export default function GenerateQuestions() {
         const batchResults = await Promise.all(batch.map(law => step2PlanSlots(law, effectiveJurisdiction, selectedTrades)));
         for (let j = 0; j < batch.length; j++) {
           const law = batch[j];
-          const slots = (batchResults[j]?.slots || []).slice(0, SLOTS_PER_LAW).map(slot => ({
+          const dynamicCap = slotsForLaw(law);
+          const slots = (batchResults[j]?.slots || []).slice(0, dynamicCap).map(slot => ({
             ...slot,
             law_citation: law.citation,
             law_title: law.title,
@@ -690,17 +715,28 @@ Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } 
                 {lawRegistry.length > 0 && (
                   <div className="space-y-1 max-h-64 overflow-y-auto mt-2">
                     <p className="text-xs text-indigo-700 mb-2 font-medium">{lawRegistry.length} laws identified (only the most relevant will be planned per generation run):</p>
-                    {lawRegistry.map((law, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-indigo-100 last:border-0">
-                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${law.law_type === 'statute' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                          {law.law_type === 'statute' ? 'STAT' : 'REG'}
-                        </span>
-                        <div>
-                          <span className="font-medium text-indigo-900">{law.citation}</span>
-                          <span className="text-indigo-600 ml-1">— {law.title}</span>
+                    {[...lawRegistry].sort((a, b) => {
+                      const sA = Math.min(10, (a.complexity_score ?? 5) + (a.law_type === 'regulation' ? 2 : 0));
+                      const sB = Math.min(10, (b.complexity_score ?? 5) + (b.law_type === 'regulation' ? 2 : 0));
+                      return sB - sA;
+                    }).map((law, i) => {
+                      const effectiveScore = Math.min(10, (law.complexity_score ?? 5) + (law.law_type === 'regulation' ? 2 : 0));
+                      const slots = slotsForLaw(law);
+                      return (
+                        <div key={i} className="flex items-start gap-2 text-xs py-1 border-b border-indigo-100 last:border-0">
+                          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${law.law_type === 'statute' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {law.law_type === 'statute' ? 'STAT' : 'REG'}
+                          </span>
+                          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-100 text-violet-800">
+                            ⚡{effectiveScore} · {slots}s
+                          </span>
+                          <div>
+                            <span className="font-medium text-indigo-900">{law.citation}</span>
+                            <span className="text-indigo-600 ml-1">— {law.title}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
