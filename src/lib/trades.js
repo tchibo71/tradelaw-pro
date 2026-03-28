@@ -159,6 +159,47 @@ export const TRADES = [
   "Wastewater Facility Operator",
   "On-Site Wastewater Installer",
 
+  // ── Drainage & Site Water Management ─────────────────────────────────────
+  "Drainage Contractor",
+  "Underground Drainage Contractor",
+  "Surface Drainage Contractor",
+  "Stormwater Drainage Contractor",
+  "French Drain Installer",
+  "Catch Basin Installer",
+  "Culvert Installer",
+  "Waterway & Channel Contractor",
+  "Erosion Control Contractor",
+  "Sediment Control Contractor",
+  "Stormwater BMP Installer",
+  "Sump Pump Installer",
+  "Drainage System Designer",
+
+  // ── Retaining Walls & Earthwork Structures ────────────────────────────────
+  "Retaining Wall Contractor",
+  "Segmental Retaining Wall Installer",
+  "Concrete Retaining Wall Contractor",
+  "Timber Retaining Wall Installer",
+  "Gabion Wall Installer",
+  "Soldier Pile & Lagging Contractor",
+  "Sheet Pile Contractor",
+  "Geo-Grid & MSE Wall Contractor",
+
+  // ── Hardscaping & Paving ──────────────────────────────────────────────────
+  "Hardscaping Contractor",
+  "Paver Installer",
+  "Interlocking Concrete Paver Installer",
+  "Natural Stone Paver Installer",
+  "Permeable Paver Installer",
+  "Patio & Walkway Contractor",
+  "Driveway Contractor",
+  "Asphalt Paving Contractor",
+  "Stamped Concrete Contractor",
+  "Outdoor Structure Contractor",
+  "Pergola & Arbor Installer",
+  "Outdoor Kitchen Contractor",
+  "Fire Pit & Fireplace Contractor",
+  "Decorative Concrete Contractor",
+
   // ── Landscaping & Horticulture ────────────────────────────────────────────
   "Landscape Contractor",
   "Landscape Architect",
