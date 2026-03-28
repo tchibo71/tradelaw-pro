@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, XCircle, BookOpen } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AnswerReveal from './AnswerReveal';
 
 const NUMBER_WORDS = {
   zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5,
@@ -169,25 +170,7 @@ export default function FillInBlankCard({ question, onAnswer }) {
 
         <AnimatePresence>
           {showResult && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-6 p-5 rounded-lg bg-blue-100 border-2 border-blue-300"
-            >
-              <div className="flex items-start gap-3">
-                <BookOpen className="h-6 w-6 text-blue-700 mt-0.5 shrink-0" />
-                <div className="select-text flex-1">
-                  <p className="font-bold text-blue-900 text-lg mb-2">Explanation</p>
-                  <p className="text-base text-blue-900 leading-relaxed">{question.explanation}</p>
-                  {question.law_citation && (
-                    <p className="text-sm text-blue-800 mt-3 font-mono bg-blue-200 px-3 py-2 rounded">
-                      Citation: {question.law_citation}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+            <AnswerReveal question={question} isCorrect={isCorrect} userAnswer={userAnswer} />
           )}
         </AnimatePresence>
       </CardContent>

@@ -6,6 +6,7 @@ import { createPageUrl } from '../utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatsCard from '../components/dashboard/StatsCard';
+import PreferencesPanel from '../components/dashboard/PreferencesPanel';
 import {
   BookOpen,
   Target,
@@ -13,7 +14,6 @@ import {
   TrendingUp,
   Play,
   RotateCcw,
-  Settings,
   History,
   Sparkles,
   Trash2
@@ -52,9 +52,6 @@ export default function Dashboard() {
   useEffect(() => {
     base44.auth.me().then(currentUser => {
       setUser(currentUser);
-      if (!currentUser.preferred_trades || !currentUser.preferred_jurisdiction) {
-        window.location.href = createPageUrl('Setup');
-      }
     });
   }, []);
 
@@ -80,25 +77,15 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold text-navy-900 mb-2">
-                Welcome back, {user.full_name?.split(' ')[0] || 'Professional'}
-              </h1>
-              <p className="text-gray-600 text-lg">
-                {user.preferred_trades?.join(', ')} • {user.preferred_jurisdiction}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Link to={createPageUrl('Setup')}>
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Change Preferences
-                </Button>
-              </Link>
-            </div>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-4xl font-bold text-navy-900 mb-1">
+            Welcome back, {user.full_name?.split(' ')[0] || 'Professional'}
+          </h1>
+          <p className="text-gray-500 text-base mb-6">Your study dashboard</p>
+          <PreferencesPanel
+            user={user}
+            onSaved={(updated) => setUser(prev => ({ ...prev, ...updated }))}
+          />
         </div>
 
         {/* Stats Grid */}

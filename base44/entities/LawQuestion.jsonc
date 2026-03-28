@@ -1,0 +1,110 @@
+{
+  "name": "LawQuestion",
+  "type": "object",
+  "properties": {
+    "question_text": {
+      "type": "string",
+      "description": "The question text"
+    },
+    "question_type": {
+      "type": "string",
+      "enum": [
+        "multiple_choice",
+        "fill_in_blank",
+        "true_false"
+      ],
+      "description": "Type of question"
+    },
+    "correct_answer": {
+      "type": "string",
+      "description": "The correct answer"
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Answer options for multiple choice"
+    },
+    "trade": {
+      "type": "string",
+      "description": "Applicable trade(s) - comma separated if multiple"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "description": "Federal or specific state"
+    },
+    "local_jurisdiction": {
+      "type": "string",
+      "description": "Local city/county jurisdiction if applicable"
+    },
+    "law_type": {
+      "type": "string",
+      "enum": [
+        "statute",
+        "regulation"
+      ],
+      "description": "Whether this is statutory or regulatory"
+    },
+    "law_citation": {
+      "type": "string",
+      "description": "Citation reference (e.g., 'OSHA 1926.451', 'CA Business and Professions Code \u00a7 7031')"
+    },
+    "legal_fact_fingerprint": {
+      "type": "string",
+      "description": "Short plain-English description of the exact legal fact being tested. Used for intent-based deduplication."
+    },
+    "explanation": {
+      "type": "string",
+      "description": "Explanation of the answer including why it matters in practice"
+    },
+    "local_jurisdiction_note": {
+      "type": "string",
+      "description": "Side-by-side state vs local standard comparison (e.g. 'Tennessee state standard: X. Knoxville standard: Y. The more stringent Knoxville standard governs within city limits.')"
+    },
+    "manufacturer_note": {
+      "type": "string",
+      "description": "Manufacturer or industry standard note when code defers to manufacturer instructions"
+    },
+    "memory_tip": {
+      "type": "string",
+      "description": "A single practical sentence to help remember the value or sequence"
+    },
+    "knowledge_domain": {
+      "type": "string",
+      "description": "Knowledge domain category (e.g. Safety and Health, Electrical, Plumbing, Septic and Subsurface Drainage, etc.)"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ],
+      "default": "intermediate"
+    },
+    "confidence_tier": {
+      "type": "number",
+      "default": 0,
+      "description": "SRS tier 0-5: 0=never seen, 1=wrong, 2=correct once, 3=2x streak, 4=3x streak, 5=mastered"
+    },
+    "consecutive_correct": {
+      "type": "number",
+      "default": 0,
+      "description": "Current streak of consecutive correct answers"
+    },
+    "next_review_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When to show this question again (spaced repetition)"
+    }
+  },
+  "required": [
+    "question_text",
+    "question_type",
+    "correct_answer",
+    "trade",
+    "jurisdiction",
+    "law_type"
+  ]
+}

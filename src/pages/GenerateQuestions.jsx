@@ -49,15 +49,24 @@ const normalizeFP = (str) =>
 // ─── Pipeline step helpers ───────────────────────────────────────────────────
 
 // STEP 1 ONLY — web search enabled here and nowhere else
-const step1EnumerateLaws = (trades, jurisdiction, mode) => {
+const step1EnumerateLaws = (trades, jurisdiction, mode, focusArea) => {
   const scope = mode === 'federal'
     ? 'FEDERAL law only (OSHA, EPA, DOT, FTC etc). Do NOT include state laws.'
     : `${jurisdiction} STATE law only. Do NOT include federal laws.`;
+  const focusClause = focusArea ? `\nFOCUS AREA — Prioritize laws and regulations most relevant to: "${focusArea}". Still include foundational licensing/safety laws but weight the list toward this topic.` : '';
   return base44.integrations.Core.InvokeLLM({
     prompt: `List applicable laws and regulations for these licensed trades in scope: ${scope}
-Trades: ${trades.join(', ')}
-Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties.
-For each law/regulation, provide:
+Trades: ${trades.join(', ')}${focusClause}
+
+Draw from ALL of the following source layers:
+1. Federal statutes and agency regulations (OSHA 29 CFR 1926/1910, EPA, DOT, etc.)
+2. State statutes and agency regulations (for ${jurisdiction}: state code, state agency rules, licensing statutes)
+3. Adopted codes with state amendments (NEC, IRC, IPC, IMC, IFC with ${jurisdiction} amendments)
+4. National/international technical standards (ASTM, ANSI, NFPA, UL, ACI, AISC, AWWA, ACCA, NCMA, ALSC, AWC, NRCA)
+5. Manufacturer specifications and industry standards where codes defer to them
+
+Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties, technical standards, safety thresholds.
+For each law/regulation/standard, provide:
 - citation (exact)
 - title (short)
 - law_type ("statute" | "regulation")
@@ -65,7 +74,7 @@ For each law/regulation, provide:
 - complexity_score: integer 1–10 reflecting how many distinct testable facts, thresholds, numerical limits, or sub-requirements the document contains. A thin 3-section statute = 2–3; a dense regulatory chapter with dozens of specific technical requirements = 8–10.
 - estimated_sections: your best estimate of the number of distinct sections or sub-parts in this document.
 
-IMPORTANT: Do NOT systematically score regulations lower than statutes. A detailed technical regulation (e.g. septic system soil absorption requirements, well setback distances) should score higher than a short licensing statute even if the statute is more "official". Score based on testable content density, not document type.`,
+IMPORTANT: Do NOT systematically score regulations lower than statutes. Technical standards (ACI, ASTM, NFPA) with many specific numeric requirements should score high. Score based on testable content density, not document type.`,
     add_context_from_internet: true,
     model: "gemini_3_flash",
     response_json_schema: {
@@ -91,12 +100,12 @@ IMPORTANT: Do NOT systematically score regulations lower than statutes. A detail
 };
 
 // STEP 2 — web search OFF, uses only law name/citation as context
-const step2PlanSlots = (law, jurisdiction, trades) =>
+const step2PlanSlots = (law, jurisdiction, trades, focusArea) =>
   base44.integrations.Core.InvokeLLM({
-    prompt: `Pre-define up to 20 unique exam question slots for this law.
+    prompt: `Pre-define up to 20 unique exam question slots for this law/standard.
 Law: ${law.citation} — ${law.title} (${law.law_type})
-Jurisdiction: ${jurisdiction}, Trade(s): ${trades.join(', ')}
-Dimensions to cover: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing
+Jurisdiction: ${jurisdiction}, Trade(s): ${trades.join(', ')}${focusArea ? `\nFocus Area: "${focusArea}" — weight slots toward this topic where relevant.` : ''}
+Dimensions to cover: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing, code_citations, scenario_application, jurisdiction_comparison, manufacturer_specifications, safety_thresholds
 
 DISAMBIGUATION RULE — CRITICAL:
 If this law contains multiple dollar amounts, timeframes, thresholds, or numerical values that differ based on triggering circumstance (e.g. initial licensing vs. reinstatement after suspension, different license tiers, different covered parties), each distinct amount/trigger MUST be its own separate slot with a unique legal_fact_fingerprint that includes the specific triggering circumstance. NEVER combine two distinct statutory amounts into a single slot. The question_hint must identify the specific trigger (e.g. "initial applicant bond before authorization" vs. "reinstatement bond after permit revocation").
@@ -124,10 +133,11 @@ Per slot: dimension, legal_fact_fingerprint ("[Citation] — [specific triggerin
   });
 
 // STEP 3 — web search OFF, uses only slot fingerprint + law name as context
-const step3FillSlot = (slot, jurisdiction, trades, existingFingerprints) => {
+const step3FillSlot = (slot, jurisdiction, trades, existingFingerprints, focusArea) => {
   const fpList = existingFingerprints.length > 0
     ? `\nDO NOT test these already-covered facts:\n${existingFingerprints.slice(0, 40).map((f, i) => `${i + 1}. ${f}`).join('\n')}\n`
     : '';
+  const focusClause = focusArea ? `\nFocus Area: Prioritize angle toward "${focusArea}" where relevant to this slot.\n` : '';
   return base44.integrations.Core.InvokeLLM({
     prompt: `Generate exactly 1 professional licensing exam question for ${trades.join(', ')} in ${jurisdiction}.
 Law: ${slot.law_citation} — ${slot.law_title} (${slot.law_type})
@@ -135,7 +145,7 @@ Dimension: ${slot.dimension}
 Legal fact to test: ${slot.legal_fact_fingerprint}
 Hint: ${slot.question_hint}
 Format: ${slot.suggested_format}
-${fpList}
+${fpList}${focusClause}
 Rules:
 - legal_fact_fingerprint MUST be: "${slot.legal_fact_fingerprint}"
 - law_type: "${slot.law_type}"
@@ -143,13 +153,16 @@ Rules:
 - For T/F: correct_answer is exactly "True" or "False"
 - For fill_in_blank: use _____, never reveal answer in question text
 - NEVER embed the answer in the question text
-- 1-sentence explanation only
+- explanation: explain WHY the answer is correct AND the real-world consequence of getting it wrong (2-3 sentences). Must cite the specific code/standard section.
+- memory_tip: (optional) one short practical sentence to remember the value or sequence (e.g. "Five feet — deeper than you are tall, you need protection.")
+- manufacturer_note: (optional) include ONLY if the answer derives from a manufacturer spec or the code defers to manufacturer instructions
+- knowledge_domain: assign one of: Safety and Health, Excavation and Earthwork, Concrete and Masonry, Structural and Framing, Retaining Walls, Electrical, Plumbing, HVAC and Mechanical, Roofing, Septic and Subsurface Drainage, Surface Drainage, Gutters and Downspouts, Permits and Inspections, Material Standards, Environmental and Site, Licensing
 
 DISAMBIGUATION RULES — NON-NEGOTIABLE:
-1. The question stem MUST specify the exact triggering circumstance so only ONE answer is correct. Example: if testing a bond amount, the stem must state whether it applies to initial applicants, reinstatement after revocation, a specific license tier, etc.
-2. NO two answer choices may both be legally correct under any reasonable reading of the question as written. If the law has a $15,000 bond for initial applicants AND a $30,000 bond for reinstatement, a question about one must name the scenario so the other amount is clearly wrong.
-3. For MC questions: verify each wrong option is unambiguously wrong given the question stem. Do NOT use other valid statutory amounts from the same law as distractors unless the question stem clearly excludes them.
-4. The question stem must contain enough context (who, when, what circumstance) that a knowledgeable test-taker can identify the single correct answer without guessing which statute section is being tested.`,
+1. The question stem MUST specify the exact triggering circumstance so only ONE answer is correct.
+2. NO two answer choices may both be legally correct under any reasonable reading of the question as written.
+3. For MC questions: verify each wrong option is unambiguously wrong given the question stem.
+4. The question stem must contain enough context that a knowledgeable test-taker can identify the single correct answer.`,
     add_context_from_internet: false,
     model: "gemini_3_flash",
     response_json_schema: {
@@ -251,7 +264,7 @@ export default function GenerateQuestions() {
       setGenProgress({ step: 1, current: 0, total: 1, stage: `Step 1 of 3: Enumerating ${effectiveJurisdiction} laws (web search)...` });
       let laws = lawRegistry.length > 0 ? lawRegistry : null;
       if (!laws) {
-        const r1 = await step1EnumerateLaws(selectedTrades, effectiveJurisdiction, jurisdictionMode);
+        const r1 = await step1EnumerateLaws(selectedTrades, effectiveJurisdiction, jurisdictionMode, focusArea);
         laws = r1?.laws || [];
       }
       if (laws.length === 0) throw new Error('Step 1 failed: Could not enumerate applicable laws.');
@@ -283,7 +296,7 @@ export default function GenerateQuestions() {
           total: lawsToProcess.length,
           stage: `Step 2 of 3: Planning slots for law${batch.length > 1 ? 's' : ''} ${i + 1}–${Math.min(i + batch.length, lawsToProcess.length)} of ${lawsToProcess.length} (no web search)...`
         });
-        const batchResults = await Promise.all(batch.map(law => step2PlanSlots(law, effectiveJurisdiction, selectedTrades)));
+        const batchResults = await Promise.all(batch.map(law => step2PlanSlots(law, effectiveJurisdiction, selectedTrades, focusArea)));
         for (let j = 0; j < batch.length; j++) {
           const law = batch[j];
           const dynamicCap = slotsForLaw(law);
@@ -323,7 +336,7 @@ export default function GenerateQuestions() {
         });
 
         const batchResults = await Promise.all(batch.map(async (slot) => {
-          const resp = await step3FillSlot(slot, effectiveJurisdiction, selectedTrades, fpSnapshot);
+          const resp = await step3FillSlot(slot, effectiveJurisdiction, selectedTrades, fpSnapshot, focusArea);
           const q = resp?.questions?.[0];
           if (q && isValidQuestion(q, new Set(seenFingerprints))) return { slot, q };
           return { slot, q: null };
@@ -367,7 +380,12 @@ export default function GenerateQuestions() {
           law_citation: q.law_citation,
           legal_fact_fingerprint: q.legal_fact_fingerprint?.trim() || null,
           explanation: q.explanation,
-          difficulty: q.difficulty
+          difficulty: q.difficulty,
+          memory_tip: q.memory_tip || null,
+          manufacturer_note: q.manufacturer_note || null,
+          knowledge_domain: q.knowledge_domain || null,
+          confidence_tier: 0,
+          consecutive_correct: 0,
         };
       });
 
@@ -698,7 +716,7 @@ Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } 
                       if (selectedTrades.length === 0 || (jurisdictionMode === 'state' && !selectedJurisdiction)) return;
                       setLawRegistryLoading(true);
                       setLawRegistry([]);
-                      const r = await step1EnumerateLaws(selectedTrades, jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction, jurisdictionMode);
+                      const r = await step1EnumerateLaws(selectedTrades, jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction, jurisdictionMode, focusArea);
                       setLawRegistry(r?.laws || []);
                       setLawRegistryLoading(false);
                     }}
