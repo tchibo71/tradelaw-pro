@@ -35,6 +35,7 @@ export default function Study() {
   const [finished, setFinished] = useState(false);
   const [lawTypeFilter, setLawTypeFilter] = useState('all');
   const wrongAnswersRef = useRef([]);
+  const answeredSinceShuffleRef = useRef(0);
 
   useEffect(() => {
     base44.auth.me().then(setUser);
@@ -71,18 +72,17 @@ export default function Study() {
     const seen = new Set();
     allQ = allQ.filter(q => { if (seen.has(q.id)) return false; seen.add(q.id); return true; });
 
-    // SRS sort: prioritize due questions, then by tier ascending
-    const now = new Date();
-    allQ.sort((a, b) => {
-      const aDue = !a.next_review_date || new Date(a.next_review_date) <= now;
-      const bDue = !b.next_review_date || new Date(b.next_review_date) <= now;
-      if (aDue && !bDue) return -1;
-      if (!aDue && bDue) return 1;
-      return (a.confidence_tier ?? 0) - (b.confidence_tier ?? 0);
-    });
+    // Shuffle all questions randomly (Fisher-Yates)
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
 
-    // Take up to 20 questions
-    const selected = allQ.slice(0, 20);
+    const selected = shuffle(allQ);
 
     // Create study session
     const session = await base44.entities.StudySession.create({
@@ -93,6 +93,7 @@ export default function Study() {
       completed: false,
     });
 
+    answeredSinceShuffleRef.current = 0;
     setSessionId(session.id);
     setQuestions(selected);
     setQueue([...selected]);
@@ -173,9 +174,22 @@ export default function Study() {
       }
     }
 
+    // Reshuffle every 50 answered questions
+    answeredSinceShuffleRef.current += 1;
+    let reshuffledQueue = null;
+    if (answeredSinceShuffleRef.current >= 50) {
+      answeredSinceShuffleRef.current = 0;
+      setQueue(prev => {
+        const remaining = prev.slice(currentIndex + 1);
+        const shuffled = [...remaining].sort(() => Math.random() - 0.5);
+        reshuffledQueue = shuffled;
+        return shuffled;
+      });
+    }
+
     // Move to next
-    const nextIndex = currentIndex + 1;
-    if (nextIndex >= queue.length) {
+    const nextIndex = reshuffledQueue ? 0 : currentIndex + 1;
+    if (!reshuffledQueue && nextIndex >= queue.length) {
       // Session complete
       await base44.entities.StudySession.update(sessionId, {
         correct_answers: newStats.correct,
@@ -184,7 +198,8 @@ export default function Study() {
       });
       setFinished(true);
     } else {
-      setCurrentIndex(nextIndex);
+      if (!reshuffledQueue) setCurrentIndex(nextIndex);
+      else setCurrentIndex(0);
     }
   };
 
