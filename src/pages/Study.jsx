@@ -1,0 +1,319 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '../utils';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, BookOpen, CheckCircle, XCircle, RotateCcw, Home } from 'lucide-react';
+import MultipleChoiceCard from '@/components/study/MultipleChoiceCard';
+import TrueFalseCard from '@/components/study/TrueFalseCard';
+import FillInBlankCard from '@/components/study/FillInBlankCard';
+
+// SRS intervals by tier (days)
+const SRS_INTERVALS = [0, 1, 2, 3, 7, 14, 30];
+
+const addDays = (days) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+};
+
+export default function Study() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const paramTrades = urlParams.get('trades') ? urlParams.get('trades').split(',').filter(Boolean) : [];
+  const paramJurisdiction = urlParams.get('jurisdiction') || '';
+
+  const [user, setUser] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [queue, setQueue] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [sessionId, setSessionId] = useState(null);
+  const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [finished, setFinished] = useState(false);
+  const [lawTypeFilter, setLawTypeFilter] = useState('all');
+  const wrongAnswersRef = useRef([]);
+
+  useEffect(() => {
+    base44.auth.me().then(setUser);
+  }, []);
+
+  useEffect(() => {
+    if (user) loadQuestions();
+  }, [user, lawTypeFilter]);
+
+  const loadQuestions = async () => {
+    setLoading(true);
+    setFinished(false);
+    wrongAnswersRef.current = [];
+    setSessionStats({ correct: 0, incorrect: 0, total: 0 });
+
+    const trades = paramTrades.length > 0 ? paramTrades : (user?.preferred_trades || []);
+    const jurisdiction = paramJurisdiction || user?.preferred_jurisdiction || 'Federal';
+
+    let allQ = [];
+    if (trades.length > 0) {
+      for (const trade of trades) {
+        const filter = { trade, jurisdiction };
+        if (lawTypeFilter !== 'all') filter.law_type = lawTypeFilter;
+        const qs = await base44.entities.LawQuestion.filter(filter, null, 200);
+        allQ.push(...qs);
+      }
+    } else {
+      const filter = { jurisdiction };
+      if (lawTypeFilter !== 'all') filter.law_type = lawTypeFilter;
+      allQ = await base44.entities.LawQuestion.filter(filter, null, 200);
+    }
+
+    // Deduplicate
+    const seen = new Set();
+    allQ = allQ.filter(q => { if (seen.has(q.id)) return false; seen.add(q.id); return true; });
+
+    // SRS sort: prioritize due questions, then by tier ascending
+    const now = new Date();
+    allQ.sort((a, b) => {
+      const aDue = !a.next_review_date || new Date(a.next_review_date) <= now;
+      const bDue = !b.next_review_date || new Date(b.next_review_date) <= now;
+      if (aDue && !bDue) return -1;
+      if (!aDue && bDue) return 1;
+      return (a.confidence_tier ?? 0) - (b.confidence_tier ?? 0);
+    });
+
+    // Take up to 20 questions
+    const selected = allQ.slice(0, 20);
+
+    // Create study session
+    const session = await base44.entities.StudySession.create({
+      trades: trades.length > 0 ? trades : ['General'],
+      jurisdiction,
+      total_questions: selected.length,
+      correct_answers: 0,
+      completed: false,
+    });
+
+    setSessionId(session.id);
+    setQuestions(selected);
+    setQueue([...selected]);
+    setCurrentIndex(0);
+    setLoading(false);
+  };
+
+  const handleAnswer = async (userAnswer, isCorrect) => {
+    const current = queue[currentIndex];
+    if (!current) return;
+
+    // Update session stats
+    const newStats = {
+      correct: sessionStats.correct + (isCorrect ? 1 : 0),
+      incorrect: sessionStats.incorrect + (isCorrect ? 0 : 1),
+      total: sessionStats.total + 1,
+    };
+    setSessionStats(newStats);
+
+    // Record attempt
+    await base44.entities.QuestionAttempt.create({
+      question_id: current.id,
+      user_answer: userAnswer,
+      is_correct: isCorrect,
+      session_id: sessionId,
+    });
+
+    // Update SRS on question
+    const currentTier = current.confidence_tier ?? 0;
+    const currentStreak = current.consecutive_correct ?? 0;
+    let newTier, newStreak;
+    if (isCorrect) {
+      newStreak = currentStreak + 1;
+      newTier = Math.min(5, currentTier + 1);
+    } else {
+      newStreak = 0;
+      newTier = Math.max(1, currentTier - 1);
+      // Track wrong answer for review
+      wrongAnswersRef.current.push(current);
+      // Re-queue 3-5 positions later
+      const insertAt = Math.min(currentIndex + 3 + Math.floor(Math.random() * 3), queue.length);
+      setQueue(prev => {
+        const newQueue = [...prev];
+        newQueue.splice(insertAt, 0, { ...current, _requeued: true });
+        return newQueue;
+      });
+    }
+
+    const interval = SRS_INTERVALS[newTier] ?? 30;
+    await base44.entities.LawQuestion.update(current.id, {
+      confidence_tier: newTier,
+      consecutive_correct: newStreak,
+      next_review_date: addDays(interval),
+    });
+
+    // Update review queue
+    if (!isCorrect) {
+      const existing = await base44.entities.ReviewQueue.filter({ question_id: current.id });
+      if (existing.length > 0) {
+        await base44.entities.ReviewQueue.update(existing[0].id, {
+          times_incorrect: (existing[0].times_incorrect ?? 1) + 1,
+          priority_score: (existing[0].priority_score ?? 1) + 1,
+          last_attempt_date: new Date().toISOString(),
+        });
+      } else {
+        await base44.entities.ReviewQueue.create({
+          question_id: current.id,
+          times_incorrect: 1,
+          priority_score: 1,
+          last_attempt_date: new Date().toISOString(),
+        });
+      }
+    } else {
+      // Remove from review queue if mastered
+      if (newTier >= 4) {
+        const existing = await base44.entities.ReviewQueue.filter({ question_id: current.id });
+        for (const r of existing) await base44.entities.ReviewQueue.delete(r.id);
+      }
+    }
+
+    // Move to next
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= queue.length) {
+      // Session complete
+      await base44.entities.StudySession.update(sessionId, {
+        correct_answers: newStats.correct,
+        total_questions: newStats.total,
+        completed: true,
+      });
+      setFinished(true);
+    } else {
+      setCurrentIndex(nextIndex);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-indigo-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Loading questions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
+        <Card className="max-w-md w-full shadow-xl text-center p-8">
+          <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">No Questions Found</h2>
+          <p className="text-gray-500 mb-6">Generate questions first to start studying.</p>
+          <Link to={createPageUrl('GenerateQuestions')}>
+            <Button className="w-full">Generate Questions</Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  if (finished) {
+    const accuracy = sessionStats.total > 0 ? Math.round((sessionStats.correct / sessionStats.total) * 100) : 0;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
+        <Card className="max-w-md w-full shadow-xl">
+          <CardHeader className="text-center bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+            <CardTitle className="text-3xl text-gray-800">Session Complete!</CardTitle>
+          </CardHeader>
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl font-bold text-indigo-600">{accuracy}%</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-green-50 rounded-lg p-4">
+                <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-green-700">{sessionStats.correct}</p>
+                <p className="text-sm text-green-600">Correct</p>
+              </div>
+              <div className="bg-red-50 rounded-lg p-4">
+                <XCircle className="h-8 w-8 text-red-500 mx-auto mb-1" />
+                <p className="text-2xl font-bold text-red-700">{sessionStats.incorrect}</p>
+                <p className="text-sm text-red-600">Incorrect</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Button onClick={loadQuestions} className="w-full">
+                <RotateCcw className="h-4 w-4 mr-2" />Study Again
+              </Button>
+              <Link to={createPageUrl('Dashboard')}>
+                <Button variant="outline" className="w-full">
+                  <Home className="h-4 w-4 mr-2" />Back to Dashboard
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const currentQuestion = queue[currentIndex];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4 md:p-8">
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+          <Link to={createPageUrl('Dashboard')}>
+            <Button variant="ghost" size="sm">← Dashboard</Button>
+          </Link>
+          <div className="flex items-center gap-3">
+            {/* Law Type Filter */}
+            <Select value={lawTypeFilter} onValueChange={(v) => setLawTypeFilter(v)}>
+              <SelectTrigger className="w-44 bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Law Types</SelectItem>
+                <SelectItem value="statute">Statutes Only</SelectItem>
+                <SelectItem value="regulation">Regulations Only</SelectItem>
+              </SelectContent>
+            </Select>
+            <Badge variant="outline" className="text-sm px-3 py-1">
+              {currentIndex + 1} / {queue.length}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+          <div
+            className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${((currentIndex) / queue.length) * 100}%` }}
+          />
+        </div>
+
+        {/* Session stats */}
+        <div className="flex gap-4 mb-6 text-sm">
+          <span className="flex items-center gap-1 text-green-700 font-medium">
+            <CheckCircle className="h-4 w-4" />{sessionStats.correct}
+          </span>
+          <span className="flex items-center gap-1 text-red-700 font-medium">
+            <XCircle className="h-4 w-4" />{sessionStats.incorrect}
+          </span>
+          {currentQuestion?.confidence_tier !== undefined && (
+            <Badge variant="outline" className="text-xs">
+              Tier {currentQuestion.confidence_tier ?? 0}
+            </Badge>
+          )}
+        </div>
+
+        {/* Question card */}
+        {currentQuestion?.question_type === 'multiple_choice' && (
+          <MultipleChoiceCard key={currentQuestion.id + currentIndex} question={currentQuestion} onAnswer={handleAnswer} />
+        )}
+        {currentQuestion?.question_type === 'true_false' && (
+          <TrueFalseCard key={currentQuestion.id + currentIndex} question={currentQuestion} onAnswer={handleAnswer} />
+        )}
+        {currentQuestion?.question_type === 'fill_in_blank' && (
+          <FillInBlankCard key={currentQuestion.id + currentIndex} question={currentQuestion} onAnswer={handleAnswer} />
+        )}
+      </div>
+    </div>
+  );
+}

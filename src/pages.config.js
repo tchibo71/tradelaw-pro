@@ -52,7 +52,7 @@ import GenerateQuestions from './pages/GenerateQuestions';
 import History from './pages/History';
 import Review from './pages/Review';
 import Setup from './pages/Setup';
-import Study from './pages/Study.jsx';
+import Study from './pages/Study';
 import __Layout from './Layout.jsx';
 
 
