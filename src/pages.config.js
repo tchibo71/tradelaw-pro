@@ -53,6 +53,7 @@ import History from './pages/History';
 import Review from './pages/Review';
 import Setup from './pages/Setup';
 import Study from './pages/Study';
+import UpdatePrefs from './pages/UpdatePrefs';
 import __Layout from './Layout.jsx';
 
 
@@ -63,6 +64,7 @@ export const PAGES = {
     "Review": Review,
     "Setup": Setup,
     "Study": Study,
+    "UpdatePrefs": UpdatePrefs,
 }
 
 export const pagesConfig = {
