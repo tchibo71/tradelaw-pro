@@ -2,15 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import TradeSelector from '../components/setup/TradeSelector';
 import JurisdictionSelector from '../components/setup/JurisdictionSelector';
-import { BookOpen, ArrowRight } from 'lucide-react';
+import { BookOpen, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
+
+const LOCAL_JURISDICTIONS = {
+  Tennessee: [
+    "Knoxville / Knox County",
+    "Nashville / Davidson County",
+    "Memphis / Shelby County",
+    "Chattanooga / Hamilton County",
+    "Johnson City / Washington County",
+    "Kingsport / Sullivan County",
+    "Clarksville / Montgomery County",
+    "Murfreesboro / Rutherford County",
+  ],
+};
 
 export default function Setup() {
   const [selectedTrades, setSelectedTrades] = useState([]);
   const [jurisdiction, setJurisdiction] = useState('');
+  const [localJurisdictions, setLocalJurisdictions] = useState([]);
+  const [localSearch, setLocalSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -28,13 +44,23 @@ export default function Setup() {
     if (currentUser.preferred_jurisdiction) {
       setJurisdiction(currentUser.preferred_jurisdiction);
     }
+    if (currentUser.preferred_local_jurisdictions) {
+      setLocalJurisdictions(currentUser.preferred_local_jurisdictions);
+    }
+  };
+
+  const toggleLocal = (local) => {
+    setLocalJurisdictions(prev =>
+      prev.includes(local) ? prev.filter(l => l !== local) : [...prev, local]
+    );
   };
 
   const handleSave = async () => {
     setLoading(true);
     await base44.auth.updateMe({
       preferred_trades: selectedTrades,
-      preferred_jurisdiction: jurisdiction
+      preferred_jurisdiction: jurisdiction,
+      preferred_local_jurisdictions: localJurisdictions,
     });
     setLoading(false);
     window.location.href = createPageUrl('Dashboard');
@@ -63,8 +89,47 @@ export default function Setup() {
           <CardContent className="p-6 space-y-6">
             <JurisdictionSelector
               value={jurisdiction}
-              onChange={setJurisdiction}
+              onChange={(v) => { setJurisdiction(v); setLocalJurisdictions([]); }}
             />
+
+            {/* Local jurisdictions */}
+            {(LOCAL_JURISDICTIONS[jurisdiction] || []).length > 0 && (
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">
+                  Local Jurisdiction <span className="font-normal text-gray-500">(optional — activates local amendments)</span>
+                </label>
+                <Input
+                  placeholder="Search cities / counties..."
+                  value={localSearch}
+                  onChange={e => setLocalSearch(e.target.value)}
+                  className="mb-2 text-sm"
+                />
+                <div className="flex flex-wrap gap-2">
+                  {(LOCAL_JURISDICTIONS[jurisdiction] || [])
+                    .filter(l => l.toLowerCase().includes(localSearch.toLowerCase()))
+                    .map(local => (
+                      <button
+                        key={local}
+                        type="button"
+                        onClick={() => toggleLocal(local)}
+                        className={`text-xs px-3 py-1.5 rounded-full border-2 transition-colors font-medium ${
+                          localJurisdictions.includes(local)
+                            ? 'bg-amber-500 text-white border-amber-500'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400'
+                        }`}
+                      >
+                        {localJurisdictions.includes(local) && <CheckCircle2 className="h-3 w-3 inline mr-1" />}
+                        {local}
+                      </button>
+                    ))}
+                </div>
+                {localJurisdictions.length > 0 && (
+                  <p className="text-xs text-amber-700 mt-2 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    When local standards are more stringent than state, both will be shown side-by-side in answers.
+                  </p>
+                )}
+              </div>
+            )}
 
             <TradeSelector
               selectedTrades={selectedTrades}
