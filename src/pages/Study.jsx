@@ -54,18 +54,13 @@ export default function Study() {
     const trades = paramTrades.length > 0 ? paramTrades : (user?.preferred_trades || []);
     const jurisdiction = paramJurisdiction || user?.preferred_jurisdiction || 'Federal';
 
-    let allQ = [];
+    // Fetch all questions for this jurisdiction in one call, then filter client-side
+    const filter = { jurisdiction };
+    if (lawTypeFilter !== 'all') filter.law_type = lawTypeFilter;
+    let allQ = await base44.entities.LawQuestion.filter(filter, null, 2000);
     if (trades.length > 0) {
-      for (const trade of trades) {
-        const filter = { trade, jurisdiction };
-        if (lawTypeFilter !== 'all') filter.law_type = lawTypeFilter;
-        const qs = await base44.entities.LawQuestion.filter(filter, null, 200);
-        allQ.push(...qs);
-      }
-    } else {
-      const filter = { jurisdiction };
-      if (lawTypeFilter !== 'all') filter.law_type = lawTypeFilter;
-      allQ = await base44.entities.LawQuestion.filter(filter, null, 200);
+      const tradeSet = new Set(trades);
+      allQ = allQ.filter(q => tradeSet.has(q.trade));
     }
 
     // Deduplicate
