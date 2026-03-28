@@ -36,6 +36,7 @@ export default function Study() {
   const [lawTypeFilter, setLawTypeFilter] = useState('all');
   const wrongAnswersRef = useRef([]);
   const answeredSinceShuffleRef = useRef(0);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     base44.auth.me().then(setUser);
@@ -46,6 +47,8 @@ export default function Study() {
   }, [user, lawTypeFilter]);
 
   const loadQuestions = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     setFinished(false);
     wrongAnswersRef.current = [];
@@ -94,6 +97,7 @@ export default function Study() {
     setQueue([...selected]);
     setCurrentIndex(0);
     setLoading(false);
+    loadingRef.current = false;
   };
 
   const handleAnswer = async (userAnswer, isCorrect) => {
@@ -108,8 +112,8 @@ export default function Study() {
     };
     setSessionStats(newStats);
 
-    // Record attempt
-    await base44.entities.QuestionAttempt.create({
+    // Record attempt (fire-and-forget)
+    base44.entities.QuestionAttempt.create({
       question_id: current.id,
       user_answer: userAnswer,
       is_correct: isCorrect,
@@ -138,35 +142,35 @@ export default function Study() {
     }
 
     const interval = SRS_INTERVALS[newTier] ?? 30;
-    await base44.entities.LawQuestion.update(current.id, {
+    // Fire-and-forget — don't await, no need to block UI
+    base44.entities.LawQuestion.update(current.id, {
       confidence_tier: newTier,
       consecutive_correct: newStreak,
       next_review_date: addDays(interval),
     });
 
-    // Update review queue
+    // Update review queue (fire-and-forget)
     if (!isCorrect) {
-      const existing = await base44.entities.ReviewQueue.filter({ question_id: current.id });
-      if (existing.length > 0) {
-        await base44.entities.ReviewQueue.update(existing[0].id, {
-          times_incorrect: (existing[0].times_incorrect ?? 1) + 1,
-          priority_score: (existing[0].priority_score ?? 1) + 1,
-          last_attempt_date: new Date().toISOString(),
-        });
-      } else {
-        await base44.entities.ReviewQueue.create({
-          question_id: current.id,
-          times_incorrect: 1,
-          priority_score: 1,
-          last_attempt_date: new Date().toISOString(),
-        });
-      }
-    } else {
-      // Remove from review queue if mastered
-      if (newTier >= 4) {
-        const existing = await base44.entities.ReviewQueue.filter({ question_id: current.id });
-        for (const r of existing) await base44.entities.ReviewQueue.delete(r.id);
-      }
+      base44.entities.ReviewQueue.filter({ question_id: current.id }).then(existing => {
+        if (existing.length > 0) {
+          base44.entities.ReviewQueue.update(existing[0].id, {
+            times_incorrect: (existing[0].times_incorrect ?? 1) + 1,
+            priority_score: (existing[0].priority_score ?? 1) + 1,
+            last_attempt_date: new Date().toISOString(),
+          });
+        } else {
+          base44.entities.ReviewQueue.create({
+            question_id: current.id,
+            times_incorrect: 1,
+            priority_score: 1,
+            last_attempt_date: new Date().toISOString(),
+          });
+        }
+      });
+    } else if (newTier >= 4) {
+      base44.entities.ReviewQueue.filter({ question_id: current.id }).then(existing => {
+        for (const r of existing) base44.entities.ReviewQueue.delete(r.id);
+      });
     }
 
     // Reshuffle every 50 answered questions
