@@ -37,6 +37,23 @@ const STATES = [
   "Wisconsin", "Wyoming"
 ];
 
+// East Tennessee service area counties — triggers Source Layer 8 / TYPE 12
+const EAST_TN_COUNTIES = new Set([
+  'hancock', 'hawkins', 'sullivan', 'bristol', 'kingsport', 'johnson city',
+  'washington', 'unicoi', 'erwin', 'carter', 'elizabethton', 'johnson', 'mountain city',
+  'greene', 'greeneville', 'cocke', 'newport', 'sevier', 'sevierville', 'pigeon forge', 'gatlinburg',
+  'knox', 'knoxville', 'union', 'maynardville', 'claiborne', 'grainger', 'jefferson',
+  'hamblen', 'morristown', 'anderson', 'oak ridge', 'clinton', 'roan mountain', 'blountville',
+]);
+
+const isEastTNJurisdiction = (jurisdiction) => {
+  const lower = (jurisdiction || '').toLowerCase();
+  for (const county of EAST_TN_COUNTIES) {
+    if (lower.includes(county)) return true;
+  }
+  return false;
+};
+
 const normalizeForMatch = (str) =>
   (str || '').toLowerCase()
     .replace(/[\u00a0\u2009\u202f\t]/g, ' ')
@@ -54,6 +71,17 @@ const step1EnumerateLaws = (trades, jurisdiction, mode, focusArea) => {
     ? 'FEDERAL law only (OSHA, EPA, DOT, FTC etc). Do NOT include state laws.'
     : `${jurisdiction} STATE law only. Do NOT include federal laws.`;
   const focusClause = focusArea ? `\nFOCUS AREA — Prioritize laws and regulations most relevant to: "${focusArea}". Still include foundational licensing/safety laws but weight the list toward this topic.` : '';
+
+  const eastTNLayer = isEastTNJurisdiction(jurisdiction) ? `
+8. East Tennessee local jurisdiction knowledge (ACTIVE — jurisdiction is in East Tennessee service area):
+   Generate entries for the following East Tennessee jurisdiction-specific sources:
+   - Sevier County Environmental Health: septic permit fees ($300 new, $75 repair), re-inspection fee ($100 effective June 1 2024), mgoconnect.org online filing, processing time ~3 weeks, phone (865) 429-1766.
+   - TDEC MS4 Permit (Sevier County co-permittees, re-issued April 1 2024): zero stormwater discharge for first inch of rainfall — applies in Sevierville, Pigeon Forge, Gatlinburg, Sevier County unincorporated.
+   - Greene County septic routing change: applications no longer accepted at Greene County Environmental Health; route to TDEC directly at tdec.tn.gov/septic or Washington County TDEC office, 2305 Silverdale Drive, Johnson City TN, (423) 854-5400.
+   - Bristol TN state line: Bristol Codes Enforcement Division is the POCA AHJ for Tennessee-side work; State Street is TN/VA boundary; confirm address side before permitting.
+   - Sevierville driveway standard: maximum 10% slope first 20 feet from street, 15% thereafter — local standard not in state code.
+   - Local enforcement status by county: Sevierville/Pigeon Forge/Gatlinburg/Sevier County = POCA; Knox County/Knoxville = POCA; Johnson City = POCA; Erwin/Unicoi County = verify POCA; Carter County = verify POCA or state program; Union County = verify enforcement state; Johnson County = likely state program; Hancock County = likely state program; Washington County unincorporated = own enforcement.` : '';
+
   return base44.integrations.Core.InvokeLLM({
     prompt: `List applicable laws and regulations for these licensed trades in scope: ${scope}
 Trades: ${trades.join(', ')}${focusClause}
@@ -64,8 +92,17 @@ Draw from ALL of the following source layers:
 3. Adopted codes with state amendments (NEC, IRC, IPC, IMC, IFC with ${jurisdiction} amendments)
 4. National/international technical standards (ASTM, ANSI, NFPA, UL, ACI, AISC, AWWA, ACCA, NCMA, ALSC, AWC, NRCA)
 5. Manufacturer specifications and industry standards where codes defer to them
+6. Local government ordinances and amendments where the jurisdiction has adopted more stringent local standards
+7. Authority Having Jurisdiction (AHJ) determination framework — ALWAYS ACTIVE for Tennessee work:
+   Tennessee AHJ is governed by TCA 68-120-101. Three enforcement states exist: (A) State Program Jurisdiction — State Fire Marshal enforces, permits via tn.gov or local issue agent; (B) Local POCA jurisdiction — local government has a Program of Cooperative Agreement, local building dept is AHJ, local code edition applies (never less stringent than state, never more than 7 years older than latest published edition per TCA 68-120-101(b)(5)(A)); (C) Opt-out jurisdiction — no mandatory residential code enforcement, voluntary State Fire Marshal inspection available per TCA 68-120-101.
+   Authorities that ALWAYS retain independent jurisdiction regardless of local opt-out or POCA status: TDEC Division of Water Resources (all septic statewide, TCA 68-221-401); TOSHA (worker safety, TCA 50-3-101); State Fire Marshal (state/educational buildings); Tennessee One-Call 811 (excavation notification, TCA 65-31-101); TDCI Contractor Licensing Division (license requirements, TCA 62-6-101).
+   Dispute resolution: per TCA 68-120-101(b)(6) the State Fire Marshal's interpretation supersedes conflicting local interpretation.
+   POCA audit: per Tenn. Comp. R. & Regs. 0780-02-02-.06 (effective April 17 2025) the State Fire Marshal may revoke POCA if local code edition is more than 7 years older than latest published edition.
+   Generate entries for: TCA 68-120-101, TCA 68-221-401, TCA 65-31-101, TCA 50-3-101, TCA 62-6-101, Tenn. Comp. R. & Regs. 0780-02-02-.06.${eastTNLayer}
 
-Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties, technical standards, safety thresholds.
+Knowledge domains to use when assigning knowledge_domain: Safety and Health, Excavation and Earthwork, Concrete and Masonry, Structural and Framing, Retaining Walls, Electrical, Plumbing, HVAC and Mechanical, Roofing, Septic and Subsurface Drainage, Surface Drainage, Gutters and Downspouts, Permits and Inspections, Material Standards, Environmental and Site, Licensing, Authority Having Jurisdiction and Permit Routing
+
+Include: licensing statutes, continuing education, bonding/insurance, installation standards, inspection/permitting, enforcement/penalties, technical standards, safety thresholds, AHJ determination, permit routing.
 For each law/regulation/standard, provide:
 - citation (exact)
 - title (short)
@@ -100,12 +137,22 @@ IMPORTANT: Do NOT systematically score regulations lower than statutes. Technica
 };
 
 // STEP 2 — web search OFF, uses only law name/citation as context
-const step2PlanSlots = (law, jurisdiction, trades, focusArea) =>
-  base44.integrations.Core.InvokeLLM({
+const step2PlanSlots = (law, jurisdiction, trades, focusArea) => {
+  const eastTNDimensions = isEastTNJurisdiction(jurisdiction)
+    ? ', ahj_identification_permit_routing, east_tn_local_jurisdiction'
+    : ', ahj_identification_permit_routing';
+
+  return base44.integrations.Core.InvokeLLM({
     prompt: `Pre-define up to 20 unique exam question slots for this law/standard.
 Law: ${law.citation} — ${law.title} (${law.law_type})
 Jurisdiction: ${jurisdiction}, Trade(s): ${trades.join(', ')}${focusArea ? `\nFocus Area: "${focusArea}" — weight slots toward this topic where relevant.` : ''}
-Dimensions to cover: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing, code_citations, scenario_application, jurisdiction_comparison, manufacturer_specifications, safety_thresholds
+Dimensions to cover: definitions, thresholds_limits, exemptions, penalties, required_procedures, deadlines, responsible_parties, documentation_requirements, numerical_precision, sequencing, code_citations, scenario_application, jurisdiction_comparison, manufacturer_specifications, safety_thresholds${eastTNDimensions}
+
+TYPE 11 — AHJ IDENTIFICATION AND PERMIT ROUTING (use dimension: ahj_identification_permit_routing):
+Reserve slots for questions that train the user to determine the complete AHJ picture before starting any job. Sub-topics: identifying enforcement state (state program / POCA / opt-out), which office to call for each permit type, which code edition applies in the jurisdiction, who conducts inspections, what happens when a POCA is revoked, dispute resolution between state and local per TCA 68-120-101(b)(6), and which authorities always retain independent jurisdiction (TDEC septic, TOSHA, 811, State Fire Marshal, Contractor Licensing).
+${isEastTNJurisdiction(jurisdiction) ? `
+TYPE 12 — EAST TENNESSEE SERVICE AREA JURISDICTION (use dimension: east_tn_local_jurisdiction — ACTIVE for this jurisdiction):
+Reserve slots for questions covering: Sevier County MS4 stormwater zero-discharge requirement for first inch of rainfall; Sevier County Environmental Health septic fees/timelines/re-inspection process; Greene County septic routing change to TDEC direct; Bristol TN state-line permit jurisdiction confirmation; Roan Mountain CDP non-municipal Carter County jurisdiction; Union County multi-agency coordination (811, TDEC septic, state/POCA building, contractor licensing); local POCA vs state program status for East Tennessee counties in the service area.` : ''}
 
 DISAMBIGUATION RULE — CRITICAL:
 If this law contains multiple dollar amounts, timeframes, thresholds, or numerical values that differ based on triggering circumstance (e.g. initial licensing vs. reinstatement after suspension, different license tiers, different covered parties), each distinct amount/trigger MUST be its own separate slot with a unique legal_fact_fingerprint that includes the specific triggering circumstance. NEVER combine two distinct statutory amounts into a single slot. The question_hint must identify the specific trigger (e.g. "initial applicant bond before authorization" vs. "reinstatement bond after permit revocation").
@@ -131,6 +178,7 @@ Per slot: dimension, legal_fact_fingerprint ("[Citation] — [specific triggerin
       }
     }
   });
+};
 
 // STEP 3 — web search OFF, uses only slot fingerprint + law name as context
 const step3FillSlot = (slot, jurisdiction, trades, existingFingerprints, focusArea) => {
@@ -138,6 +186,25 @@ const step3FillSlot = (slot, jurisdiction, trades, existingFingerprints, focusAr
     ? `\nDO NOT test these already-covered facts:\n${existingFingerprints.slice(0, 40).map((f, i) => `${i + 1}. ${f}`).join('\n')}\n`
     : '';
   const focusClause = focusArea ? `\nFocus Area: Prioritize angle toward "${focusArea}" where relevant to this slot.\n` : '';
+
+  const ahjInstructions = slot.dimension === 'ahj_identification_permit_routing' ? `
+TYPE 11 — AHJ IDENTIFICATION AND PERMIT ROUTING INSTRUCTIONS:
+This slot tests AHJ determination. Questions must train the user to identify the correct AHJ and permit routing before starting work. Cover: enforcement state identification (state program / POCA / opt-out per TCA 68-120-101), which office issues each permit type, which code edition applies (local POCA may adopt equal-or-more-stringent edition, never more than 7 years older than latest published per TCA 68-120-101(b)(5)(A)), who conducts inspections, what happens when POCA is revoked (State Fire Marshal reassumes, per Tenn. Comp. R. & Regs. 0780-02-02-.06), dispute resolution (State Fire Marshal supersedes local per TCA 68-120-101(b)(6)), and authorities always retaining independent jurisdiction regardless of local status (TDEC septic TCA 68-221-401, TOSHA TCA 50-3-101, 811 TCA 65-31-101, State Fire Marshal for state/educational buildings, Contractor Licensing TCA 62-6-101).
+Question stems must specify location and trade type precisely. Scenario-based questions are preferred — present a realistic job situation and ask who the AHJ is, where to pull the permit, or what code edition governs.` : '';
+
+  const eastTNInstructions = (slot.dimension === 'east_tn_local_jurisdiction' && isEastTNJurisdiction(jurisdiction)) ? `
+TYPE 12 — EAST TENNESSEE SERVICE AREA JURISDICTION INSTRUCTIONS:
+This slot tests location-specific jurisdiction knowledge for the user's East Tennessee service area. Use verified facts only:
+- Sevier County MS4 stormwater (TDEC permit re-issued April 1 2024): zero runoff for first inch of rainfall applies in Sevierville, Pigeon Forge, Gatlinburg, Sevier County unincorporated. Affects all drainage design in this corridor.
+- Sevier County Environmental Health septic: $300 new permit fee, $75 repair fee, $100 re-inspection fee (effective June 1 2024), mgoconnect.org for standard online applications, in-person for subdivisions and large conventional systems, cash/check only payable to Sevier County Health Department, ~3 weeks processing, call (865) 429-1766 between 8am–9am to reschedule after failed final inspection.
+- Greene County septic routing change: no longer accepted at Greene County Environmental Health — apply through TDEC at tdec.tn.gov/septic or Washington County TDEC office, 2305 Silverdale Drive, Johnson City TN (423) 854-5400.
+- Bristol TN: POCA jurisdiction, Bristol Codes Enforcement Division is AHJ. State Street is TN/VA boundary. Confirm Tennessee-side address before pulling permits.
+- Roan Mountain: census-designated place, no incorporated municipal authority, falls under Carter County jurisdiction. Verify Carter County POCA or state program status before permitting.
+- Union County multi-agency: 811 three business days before excavation (TCA 65-31-101), TDEC for septic (no local septic office), determine building enforcement state before pulling structure permits, contractor license required for projects $25,000+ (TCA 62-6-101).
+- Knoxville / Knox County: both POCA. Knoxville has local electrical amendments more stringent than state and separate electrical permit process.
+- Sevierville local driveway standard: max 10% slope first 20 feet, 15% remainder — local standard not in state code.
+Questions must be scenario-based with specific locations. Present realistic job situations and ask the user to identify permit routing, fee amounts, processing timelines, or jurisdictional facts.` : '';
+
   return base44.integrations.Core.InvokeLLM({
     prompt: `Generate exactly 1 professional licensing exam question for ${trades.join(', ')} in ${jurisdiction}.
 Law: ${slot.law_citation} — ${slot.law_title} (${slot.law_type})
@@ -145,7 +212,7 @@ Dimension: ${slot.dimension}
 Legal fact to test: ${slot.legal_fact_fingerprint}
 Hint: ${slot.question_hint}
 Format: ${slot.suggested_format}
-${fpList}${focusClause}
+${fpList}${focusClause}${ahjInstructions}${eastTNInstructions}
 Rules:
 - legal_fact_fingerprint MUST be: "${slot.legal_fact_fingerprint}"
 - law_type: "${slot.law_type}"
@@ -156,7 +223,7 @@ Rules:
 - explanation: explain WHY the answer is correct AND the real-world consequence of getting it wrong (2-3 sentences). Must cite the specific code/standard section.
 - memory_tip: (optional) one short practical sentence to remember the value or sequence (e.g. "Five feet — deeper than you are tall, you need protection.")
 - manufacturer_note: (optional) include ONLY if the answer derives from a manufacturer spec or the code defers to manufacturer instructions
-- knowledge_domain: assign one of: Safety and Health, Excavation and Earthwork, Concrete and Masonry, Structural and Framing, Retaining Walls, Electrical, Plumbing, HVAC and Mechanical, Roofing, Septic and Subsurface Drainage, Surface Drainage, Gutters and Downspouts, Permits and Inspections, Material Standards, Environmental and Site, Licensing
+- knowledge_domain: assign one of: Safety and Health, Excavation and Earthwork, Concrete and Masonry, Structural and Framing, Retaining Walls, Electrical, Plumbing, HVAC and Mechanical, Roofing, Septic and Subsurface Drainage, Surface Drainage, Gutters and Downspouts, Permits and Inspections, Material Standards, Environmental and Site, Licensing, Authority Having Jurisdiction and Permit Routing
 
 DISAMBIGUATION RULES — NON-NEGOTIABLE:
 1. The question stem MUST specify the exact triggering circumstance so only ONE answer is correct.
