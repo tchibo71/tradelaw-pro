@@ -54,6 +54,8 @@ import Review from './pages/Review';
 import Setup from './pages/Setup';
 import Study from './pages/Study';
 import UpdatePrefs from './pages/UpdatePrefs';
+import TimedDrill from './pages/TimedDrill';
+import NeuroDrill from './pages/NeuroDrill';
 import __Layout from './Layout.jsx';
 
 
@@ -65,6 +67,8 @@ export const PAGES = {
     "Setup": Setup,
     "Study": Study,
     "UpdatePrefs": UpdatePrefs,
+    "TimedDrill": TimedDrill,
+    "NeuroDrill": NeuroDrill,
 }
 
 export const pagesConfig = {

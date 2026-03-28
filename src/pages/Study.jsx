@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, BookOpen, CheckCircle, XCircle, RotateCcw, Home } from 'lucide-react';
+import { Loader2, BookOpen, CheckCircle, XCircle, RotateCcw, Home, GraduationCap } from 'lucide-react';
 import MultipleChoiceCard from '@/components/study/MultipleChoiceCard';
 import TrueFalseCard from '@/components/study/TrueFalseCard';
 import FillInBlankCard from '@/components/study/FillInBlankCard';
+import AskTheMaster from '@/components/study/AskTheMaster';
 
 // SRS intervals by tier (days)
 const SRS_INTERVALS = [0, 1, 2, 3, 7, 14, 30];
@@ -34,6 +35,8 @@ export default function Study() {
   const [loading, setLoading] = useState(true);
   const [finished, setFinished] = useState(false);
   const [lawTypeFilter, setLawTypeFilter] = useState('all');
+  const [showMaster, setShowMaster] = useState(false);
+  const [assistedThisQ, setAssistedThisQ] = useState(false);
   const wrongAnswersRef = useRef([]);
   const answeredSinceShuffleRef = useRef(0);
   const loadingRef = useRef(false);
@@ -327,7 +330,26 @@ export default function Study() {
         {currentQuestion?.question_type === 'fill_in_blank' && (
           <FillInBlankCard key={currentQuestion.id + currentIndex} question={currentQuestion} onAnswer={handleAnswer} />
         )}
+
+        {/* Ask The Master — always visible, visually distinct from answer choices */}
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={() => setShowMaster(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-50 border-2 border-amber-400 text-amber-800 hover:bg-amber-100 transition-all text-sm font-semibold shadow"
+          >
+            <GraduationCap className="h-4 w-4" />
+            ASK THE MASTER
+          </button>
+        </div>
       </div>
+
+      {showMaster && (
+        <AskTheMaster
+          currentQuestion={currentQuestion}
+          onClose={() => setShowMaster(false)}
+          onAsked={() => setAssistedThisQ(true)}
+        />
+      )}
     </div>
   );
 }

@@ -16,7 +16,9 @@ import {
   RotateCcw,
   History,
   Sparkles,
-  Trash2
+  Trash2,
+  Clock,
+  Brain
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -181,6 +183,50 @@ export default function Dashboard() {
                   <h3 className="text-2xl font-bold text-navy-900 mb-2">Review Mistakes</h3>
                   <p className="text-gray-600">
                     Focus on questions you've answered incorrectly
+                  </p>
+                </CardContent>
+              </Link>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card className="shadow-xl border-2 hover:shadow-2xl transition-all cursor-pointer group h-full border-red-200">
+              <Link to={createPageUrl('TimedDrill')}>
+                <CardContent className="p-8">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-4 rounded-xl bg-red-100 group-hover:bg-red-200 transition-colors">
+                      <Clock className="h-8 w-8 text-red-600" />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-navy-900 mb-2">Timed Drill</h3>
+                  <p className="text-gray-600">
+                    7 pressure levels from Novice to Grand Master. Train knowledge under time stress.
+                  </p>
+                </CardContent>
+              </Link>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Card className="shadow-xl border-2 hover:shadow-2xl transition-all cursor-pointer group h-full border-violet-200">
+              <Link to={createPageUrl('NeuroDrill')}>
+                <CardContent className="p-8">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-4 rounded-xl bg-violet-100 group-hover:bg-violet-200 transition-colors">
+                      <Brain className="h-8 w-8 text-violet-600" />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-navy-900 mb-2">Neuroplasticity Training</h3>
+                  <p className="text-gray-600">
+                    The hardest mode. Interleaving, WHY frames, generation effect, timed. Builds durable recall.
                   </p>
                 </CardContent>
               </Link>
