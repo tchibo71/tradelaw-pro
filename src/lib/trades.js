@@ -274,13 +274,20 @@ export const TRADES = [
   // ── Accounting & Financial Services ──────────────────────────────────────
   "Accountant",
   "Accountant - CPA (Certified Public Accountant)",
-  "Accountant - Tax Accountant / Enrolled Agent",
+  "Accountant - Management Accountant (Cost / Staff / Industrial)",
+  "Accountant - Chartered Accountant (CA)",
+  "Accountant - Auditor (Internal)",
+  "Accountant - Auditor (External)",
   "Accountant - Forensic Accountant",
-  "Accountant - Auditor",
+  "Accountant - Government Accountant",
+  "Accountant - Investment Accountant",
+  "Accountant - Project Accountant",
+  "Accountant - Tax Examiner / Tax Accountant",
+  "Accountant - Enrolled Agent",
   "Accountant - Bookkeeper",
   "Accountant - Payroll Specialist",
-  "Accountant - Cost Accountant",
-  "Accountant - Government / Fund Accountant",
+  "Accountant - Fund / Nonprofit Accountant",
+  "Accountant - Financial Advisor (Accounting scope)",
   "Financial Advisor",
   "Investment Advisor",
   "Securities Broker",
@@ -303,52 +310,92 @@ export const TRADES = [
   "Immigration Consultant",
   "Process Server",
 
-  // ── Attorney / Lawyer — Parent + 7 Practice Area Categories ─────────────
+  // ── Attorney / Lawyer — Parent + Practice Area Categories ────────────────
   "Attorney / Lawyer",
+
+  // Criminal Law
   "Attorney - Criminal Law",
-  "Attorney - Criminal Law - Defense",
-  "Attorney - Criminal Law - Prosecution",
+  "Attorney - Criminal Law - Criminal Defense",
+  "Attorney - Criminal Law - Prosecution / District Attorney",
   "Attorney - Criminal Law - White Collar Crime",
   "Attorney - Criminal Law - Juvenile Criminal",
+  "Attorney - Criminal Law - DUI / Traffic Offense",
+
+  // Civil Litigation
   "Attorney - Civil Litigation",
   "Attorney - Civil Litigation - Personal Injury / Tort",
   "Attorney - Civil Litigation - Class Action",
   "Attorney - Civil Litigation - Commercial Litigation",
   "Attorney - Civil Litigation - Civil Rights",
+  "Attorney - Civil Litigation - Medical Malpractice",
+  "Attorney - Civil Litigation - Product Liability",
+
+  // Family Law
   "Attorney - Family Law",
   "Attorney - Family Law - Divorce & Dissolution",
   "Attorney - Family Law - Child Custody & Support",
   "Attorney - Family Law - Adoption",
   "Attorney - Family Law - Domestic Violence",
   "Attorney - Family Law - Guardianship & Conservatorship",
+  "Attorney - Family Law - Prenuptial Agreements",
+
+  // Corporate & Business Law
   "Attorney - Corporate & Business Law",
   "Attorney - Corporate & Business Law - Business Formation & Governance",
   "Attorney - Corporate & Business Law - Mergers & Acquisitions",
   "Attorney - Corporate & Business Law - Contract Law",
   "Attorney - Corporate & Business Law - Franchise Law",
   "Attorney - Corporate & Business Law - Securities & Finance",
+  "Attorney - Corporate & Business Law - Bankruptcy Law",
+  "Attorney - Corporate & Business Law - Commercial Law",
+
+  // Property & Real Estate Law
   "Attorney - Property & Real Estate Law",
   "Attorney - Property & Real Estate Law - Residential Real Estate",
   "Attorney - Property & Real Estate Law - Commercial Real Estate",
   "Attorney - Property & Real Estate Law - Landlord-Tenant",
-  "Attorney - Property & Real Estate Law - Eminent Domain",
+  "Attorney - Property & Real Estate Law - Eminent Domain / Condemnation",
   "Attorney - Property & Real Estate Law - Construction Defect",
+  "Attorney - Property & Real Estate Law - Zoning & Land Use",
+
+  // Estate Planning & Probate Law
   "Attorney - Estate Planning & Probate Law",
   "Attorney - Estate Planning & Probate Law - Wills & Trusts",
   "Attorney - Estate Planning & Probate Law - Probate Administration",
   "Attorney - Estate Planning & Probate Law - Elder Law",
   "Attorney - Estate Planning & Probate Law - Special Needs Planning",
+  "Attorney - Estate Planning & Probate Law - Asset Protection",
+
+  // Administrative & Regulatory Law
   "Attorney - Administrative & Regulatory Law",
   "Attorney - Administrative & Regulatory Law - Environmental Law",
   "Attorney - Administrative & Regulatory Law - Healthcare Regulatory",
   "Attorney - Administrative & Regulatory Law - Immigration Law",
   "Attorney - Administrative & Regulatory Law - Labor & Employment Law",
   "Attorney - Administrative & Regulatory Law - Government Contracts",
+  "Attorney - Administrative & Regulatory Law - Education Law",
+  "Attorney - Administrative & Regulatory Law - Tax Law",
+
+  // Intellectual Property Law
   "Attorney - Intellectual Property Law",
   "Attorney - Intellectual Property Law - Patent Law",
   "Attorney - Intellectual Property Law - Trademark Law",
   "Attorney - Intellectual Property Law - Copyright Law",
   "Attorney - Intellectual Property Law - Trade Secret Law",
+  "Attorney - Intellectual Property Law - Entertainment & Media Law",
+  "Attorney - Intellectual Property Law - Cybersecurity & Data Privacy Law",
+
+  // Additional major practice areas from Clio source
+  "Attorney - Defense Law (Civil & Criminal)",
+  "Attorney - Health Care Law",
+  "Attorney - Insurance Law",
+  "Attorney - International Law",
+  "Attorney - Sports & Entertainment Law",
+  "Attorney - Military Law / JAG",
+  "Attorney - Workers' Compensation Law",
+  "Attorney - Social Security Disability Law",
+  "Attorney - Cannabis Law",
+  "Attorney - Animal Law",
 
   // ── Automotive & Transportation ───────────────────────────────────────────
   "Auto Mechanic",
