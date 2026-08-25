@@ -1,0 +1,21 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "preferred_trades": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "User's selected trades for study"
+    },
+    "preferred_jurisdiction": {
+      "type": "string",
+      "description": "User's selected jurisdiction (Federal or State)"
+    }
+  },
+  "required": [
+    "preferred_trades",
+    "preferred_jurisdiction"
+  ]
+}

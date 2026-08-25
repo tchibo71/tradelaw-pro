@@ -1,0 +1,37 @@
+{
+  "name": "StudySession",
+  "type": "object",
+  "properties": {
+    "trades": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Trades studied in this session"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "description": "Jurisdiction for this session"
+    },
+    "total_questions": {
+      "type": "number",
+      "default": 0
+    },
+    "correct_answers": {
+      "type": "number",
+      "default": 0
+    },
+    "duration_minutes": {
+      "type": "number",
+      "description": "Total session duration"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "trades",
+    "jurisdiction"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "QuestionAttempt",
+  "type": "object",
+  "properties": {
+    "question_id": {
+      "type": "string",
+      "description": "Reference to LawQuestion"
+    },
+    "user_answer": {
+      "type": "string",
+      "description": "User's answer"
+    },
+    "is_correct": {
+      "type": "boolean",
+      "description": "Whether the answer was correct"
+    },
+    "time_spent_seconds": {
+      "type": "number",
+      "description": "Time spent on this question"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Reference to StudySession"
+    },
+    "repetition_number": {
+      "type": "number",
+      "default": 1,
+      "description": "How many times this question has been seen"
+    },
+    "next_review_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When to show this question again (spaced repetition)"
+    }
+  },
+  "required": [
+    "question_id",
+    "is_correct"
+  ]
+}

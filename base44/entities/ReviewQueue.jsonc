@@ -1,0 +1,27 @@
+{
+  "name": "ReviewQueue",
+  "type": "object",
+  "properties": {
+    "question_id": {
+      "type": "string",
+      "description": "Reference to LawQuestion"
+    },
+    "times_incorrect": {
+      "type": "number",
+      "default": 1,
+      "description": "How many times answered incorrectly"
+    },
+    "priority_score": {
+      "type": "number",
+      "default": 1,
+      "description": "Higher score = shown more frequently"
+    },
+    "last_attempt_date": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "question_id"
+  ]
+}
