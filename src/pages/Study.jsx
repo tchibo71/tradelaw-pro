@@ -12,6 +12,7 @@ import TrueFalseCard from '@/components/study/TrueFalseCard';
 import FillInBlankCard from '@/components/study/FillInBlankCard';
 import AskTheMaster from '@/components/study/AskTheMaster';
 import { useVoice } from '@/hooks/use-voice';
+import DifficultySelector from '@/components/study/DifficultySelector';
 
 const normalizeAns = (s) => (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const matchTranscriptToOptions = (transcript, options) => {
@@ -49,8 +50,10 @@ export default function Study() {
   const paramTrades = urlParams.get('trades') ? urlParams.get('trades').split(',').filter(Boolean) : [];
   const paramJurisdiction = urlParams.get('jurisdiction') || '';
   const paramReviewIds = urlParams.get('reviewIds') ? urlParams.get('reviewIds').split(',').filter(Boolean) : [];
+  const paramDifficulties = urlParams.get('difficulty') ? urlParams.get('difficulty').split(',').filter(Boolean) : ['beginner', 'intermediate', 'advanced'];
 
   const [user, setUser] = useState(null);
+  const [selectedDifficulties, setSelectedDifficulties] = useState(paramDifficulties);
   const [questions, setQuestions] = useState([]);
   const [queue, setQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -70,9 +73,20 @@ export default function Study() {
     base44.auth.me().then(setUser);
   }, []);
 
+  const toggleDifficulty = (diff) => {
+    const updated = selectedDifficulties.includes(diff)
+      ? selectedDifficulties.filter(d => d !== diff)
+      : [...selectedDifficulties, diff];
+    setSelectedDifficulties(updated);
+    const newParams = new URLSearchParams(window.location.search);
+    if (updated.length === 3 || updated.length === 0) newParams.delete('difficulty');
+    else newParams.set('difficulty', updated.join(','));
+    window.history.replaceState({}, '', `${window.location.pathname}?${newParams}`);
+  };
+
   useEffect(() => {
     if (user) loadQuestions();
-  }, [user, lawTypeFilter]);
+  }, [user, lawTypeFilter, selectedDifficulties]);
 
   // Auto-speak question when voice mode is on and question changes.
   // Must be before any early returns to respect Rules of Hooks.
@@ -127,6 +141,12 @@ export default function Study() {
     // Deduplicate
     const seen = new Set();
     allQ = allQ.filter(q => { if (seen.has(q.id)) return false; seen.add(q.id); return true; });
+
+    // Filter by difficulty (treat missing as "intermediate")
+    if (selectedDifficulties.length < 3) {
+      const diffSet = new Set(selectedDifficulties);
+      allQ = allQ.filter(q => diffSet.has(q.difficulty || 'intermediate'));
+    }
 
     let selected;
     if (paramReviewIds.length > 0) {
@@ -421,6 +441,11 @@ export default function Study() {
               {currentIndex + 1} / {queue.length}
             </Badge>
           </div>
+        </div>
+
+        {/* Difficulty selector */}
+        <div className="mb-4">
+          <DifficultySelector selected={selectedDifficulties} onToggle={toggleDifficulty} />
         </div>
 
         {/* Progress bar */}

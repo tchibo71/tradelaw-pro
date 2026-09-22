@@ -225,6 +225,12 @@ Rules:
 - manufacturer_note: (optional) include ONLY if the answer derives from a manufacturer spec or the code defers to manufacturer instructions
 - knowledge_domain: assign one of: Safety and Health, Excavation and Earthwork, Concrete and Masonry, Structural and Framing, Retaining Walls, Electrical, Plumbing, HVAC and Mechanical, Roofing, Septic and Subsurface Drainage, Surface Drainage, Gutters and Downspouts, Permits and Inspections, Material Standards, Environmental and Site, Licensing, Authority Having Jurisdiction and Permit Routing
 
+DIFFICULTY CLASSIFICATION — apply BOTH criteria together:
+- "beginner": tests a commonly-cited, frequently-encountered rule as a single plain fact. No cross-referencing of other code sections required. A working tradesperson would know this from routine day-to-day practice.
+- "intermediate": EITHER tests a less commonly-cited/more obscure rule as a single fact, OR tests a commonly-cited rule but requires connecting it to one related fact or exception to answer correctly.
+- "advanced": tests a rule that is BOTH less commonly invoked in practice AND requires cross-referencing multiple code sections, resolving a conflict or exception between two rules, or applying the rule to a non-obvious edge case. This should be difficult even for an experienced tradesperson who doesn't specialize in code compliance.
+You must assign exactly one of these three values to every question's difficulty field based on this rubric — do not default to "intermediate" when uncertain; make a deliberate classification decision using the criteria above.
+
 DISAMBIGUATION RULES — NON-NEGOTIABLE:
 1. The question stem MUST specify the exact triggering circumstance so only ONE answer is correct.
 2. NO two answer choices may both be legally correct under any reasonable reading of the question as written.
@@ -248,7 +254,7 @@ DISAMBIGUATION RULES — NON-NEGOTIABLE:
               law_type: { type: "string" },
               law_citation: { type: "string" },
               explanation: { type: "string" },
-              difficulty: { type: "string" },
+              difficulty: { type: "string", enum: ["beginner", "intermediate", "advanced"] },
               legal_fact_fingerprint: { type: "string" }
             }
           }
@@ -672,7 +678,59 @@ Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } 
         for (const id of toDelete) { await base44.entities.LawQuestion.delete(id); deleted++; }
       }
 
-      setRepairResults({ success: true, total: allQuestions.length, fixed, deleted: deleted + embeddedDeleted });
+      // ── Backfill missing difficulty classifications ────────────────────────
+      const VALID_DIFFICULTIES = new Set(['beginner', 'intermediate', 'advanced']);
+      const needsDifficulty = allQuestions.filter(q => !q.difficulty || !VALID_DIFFICULTIES.has(q.difficulty));
+      let difficultyBackfilled = 0;
+      if (needsDifficulty.length > 0) {
+        const DIFF_BATCH = 5;
+        const diffTotalBatches = Math.ceil(needsDifficulty.length / DIFF_BATCH);
+        for (let i = 0; i < needsDifficulty.length; i += DIFF_BATCH) {
+          const batch = needsDifficulty.slice(i, i + DIFF_BATCH);
+          const batchNum = Math.floor(i / DIFF_BATCH) + 1;
+          setRepairProgress({ current: batchNum, total: diffTotalBatches, stage: `Classifying difficulty batch ${batchNum}/${diffTotalBatches}...` });
+          const result = await base44.integrations.Core.InvokeLLM({
+            prompt: `Classify the difficulty of each exam question using this rubric:
+
+DIFFICULTY CLASSIFICATION — apply BOTH criteria together:
+- "beginner": tests a commonly-cited, frequently-encountered rule as a single plain fact. No cross-referencing of other code sections required. A working tradesperson would know this from routine day-to-day practice.
+- "intermediate": EITHER tests a less commonly-cited/more obscure rule as a single fact, OR tests a commonly-cited rule but requires connecting it to one related fact or exception to answer correctly.
+- "advanced": tests a rule that is BOTH less commonly invoked in practice AND requires cross-referencing multiple code sections, resolving a conflict or exception between two rules, or applying the rule to a non-obvious edge case. This should be difficult even for an experienced tradesperson who doesn't specialize in code compliance.
+
+Questions to classify:
+${JSON.stringify(batch.map(q => ({ id: q.id, question_text: q.question_text, correct_answer: q.correct_answer, law_citation: q.law_citation || '' })), null, 2)}
+
+Return a classifications array with { id, difficulty } for each question.`,
+            add_context_from_internet: false,
+            model: "gemini_3_flash",
+            response_json_schema: {
+              type: "object",
+              properties: {
+                classifications: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      difficulty: { type: "string", enum: ["beginner", "intermediate", "advanced"] }
+                    }
+                  }
+                }
+              }
+            }
+          });
+          const diffUpdates = [];
+          for (const c of (result?.classifications || [])) {
+            if (c.id && VALID_DIFFICULTIES.has(c.difficulty)) {
+              diffUpdates.push(base44.entities.LawQuestion.update(c.id, { difficulty: c.difficulty }));
+              difficultyBackfilled++;
+            }
+          }
+          await Promise.all(diffUpdates);
+        }
+      }
+
+      setRepairResults({ success: true, total: allQuestions.length, fixed, deleted: deleted + embeddedDeleted, difficultyBackfilled });
     } catch (err) {
       setRepairResults({ success: false, error: err.message });
     } finally {
@@ -1063,7 +1121,7 @@ Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } 
               {repairResults && (
                 <p className={`text-sm mt-2 font-medium ${repairResults.success ? 'text-green-800' : 'text-red-800'}`}>
                   {repairResults.success
-                    ? `✓ Scanned ${repairResults.total} — fixed ${repairResults.fixed} mismatches, removed ${repairResults.deleted} inaccurate.`
+                    ? `✓ Scanned ${repairResults.total} — fixed ${repairResults.fixed} mismatches, removed ${repairResults.deleted} inaccurate${repairResults.difficultyBackfilled ? `, backfilled ${repairResults.difficultyBackfilled} difficulty` : ''}.`
                     : `Error: ${repairResults.error}`}
                 </p>
               )}

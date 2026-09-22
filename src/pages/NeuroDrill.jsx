@@ -13,6 +13,7 @@ import MultipleChoiceCard from '@/components/study/MultipleChoiceCard';
 import TrueFalseCard from '@/components/study/TrueFalseCard';
 import FillInBlankCard from '@/components/study/FillInBlankCard';
 import { useVoice } from '@/hooks/use-voice';
+import DifficultySelector from '@/components/study/DifficultySelector';
 
 const NEURO_TIMER_LEVEL = 'intermediate_low'; // 35s minimum, cannot be disabled
 const SESSION_LENGTH = 20;
@@ -92,8 +93,10 @@ export default function NeuroDrill() {
   const urlParams = new URLSearchParams(window.location.search);
   const paramTrades = urlParams.get('trades') ? urlParams.get('trades').split(',').filter(Boolean) : [];
   const paramJurisdiction = urlParams.get('jurisdiction') || '';
+  const paramDifficulties = urlParams.get('difficulty') ? urlParams.get('difficulty').split(',').filter(Boolean) : ['beginner', 'intermediate', 'advanced'];
 
-  const [phase, setPhase] = useState('briefing'); // briefing | loading | drilling | retrieval_prompt | finished
+  const [phase, setPhase] = useState('briefing');
+  const [selectedDifficulties, setSelectedDifficulties] = useState(paramDifficulties); // briefing | loading | drilling | retrieval_prompt | finished
   const [showBriefing, setShowBriefing] = useState(false);
   const [user, setUser] = useState(null);
   const [sessionQueue, setSessionQueue] = useState([]); // 20 question slots
@@ -121,6 +124,17 @@ export default function NeuroDrill() {
 
   const levelConfig = getLevelConfig(NEURO_TIMER_LEVEL);
 
+  const toggleDifficulty = (diff) => {
+    const updated = selectedDifficulties.includes(diff)
+      ? selectedDifficulties.filter(d => d !== diff)
+      : [...selectedDifficulties, diff];
+    setSelectedDifficulties(updated);
+    const newParams = new URLSearchParams(window.location.search);
+    if (updated.length === 3 || updated.length === 0) newParams.delete('difficulty');
+    else newParams.set('difficulty', updated.join(','));
+    window.history.replaceState({}, '', `${window.location.pathname}?${newParams}`);
+  };
+
   useEffect(() => { base44.auth.me().then(setUser); }, []);
 
   // Auto-speak question when voice mode is on and question changes
@@ -143,6 +157,12 @@ export default function NeuroDrill() {
     if (trades.length > 0) {
       const ts = new Set(trades);
       allQ = allQ.filter(q => ts.has(q.trade));
+    }
+
+    // Filter by difficulty (treat missing as "intermediate")
+    if (selectedDifficulties.length < 3) {
+      const diffSet = new Set(selectedDifficulties);
+      allQ = allQ.filter(q => diffSet.has(q.difficulty || 'intermediate'));
     }
 
     // Shuffle and interleave by domain
@@ -308,6 +328,9 @@ export default function NeuroDrill() {
               </div>
             </CardContent>
           </Card>
+          <div className="mb-6">
+            <DifficultySelector selected={selectedDifficulties} onToggle={toggleDifficulty} dark />
+          </div>
           <Button
             className="w-full h-14 bg-violet-700 hover:bg-violet-600 text-white font-bold text-lg"
             onClick={() => { setPhase('loading'); if (user) loadSession(); }}
