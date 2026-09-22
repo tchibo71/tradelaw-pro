@@ -25,6 +25,7 @@ export default function Study() {
   const urlParams = new URLSearchParams(window.location.search);
   const paramTrades = urlParams.get('trades') ? urlParams.get('trades').split(',').filter(Boolean) : [];
   const paramJurisdiction = urlParams.get('jurisdiction') || '';
+  const paramReviewIds = urlParams.get('reviewIds') ? urlParams.get('reviewIds').split(',').filter(Boolean) : [];
 
   const [user, setUser] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -60,74 +61,99 @@ export default function Study() {
     const trades = paramTrades.length > 0 ? paramTrades : (user?.preferred_trades || []);
     const jurisdiction = paramJurisdiction || user?.preferred_jurisdiction || 'Federal';
 
-    // Fetch all questions for this jurisdiction in one call, then filter client-side
-    const filter = { jurisdiction };
-    if (lawTypeFilter !== 'all') filter.law_type = lawTypeFilter;
-    let allQ = await base44.entities.LawQuestion.filter(filter, null, 2000);
-    if (trades.length > 0) {
-      const tradeSet = new Set(trades);
-      allQ = allQ.filter(q => tradeSet.has(q.trade));
+    let allQ;
+    let sessionTrades = trades;
+    let sessionJurisdiction = jurisdiction;
+
+    if (paramReviewIds.length > 0) {
+      // Review-mode session: fetch exactly the requested question ids, ordered
+      // by their ReviewQueue priority_score descending (highest priority first).
+      const reviewItems = await base44.entities.ReviewQueue.filter(
+        { question_id: { $in: paramReviewIds } }
+      );
+      const priorityById = new Map(reviewItems.map(r => [r.question_id, r.priority_score ?? 0]));
+      const fetched = await base44.entities.LawQuestion.filter({ id: { $in: paramReviewIds } });
+      allQ = fetched
+        .filter(q => paramReviewIds.includes(q.id))
+        .sort((a, b) => (priorityById.get(b.id) ?? 0) - (priorityById.get(a.id) ?? 0));
+      // Derive session metadata from the fetched questions for record-keeping.
+      sessionTrades = [...new Set(allQ.map(q => q.trade).filter(Boolean))];
+      sessionJurisdiction = allQ[0]?.jurisdiction || jurisdiction;
+    } else {
+      // Normal session: fetch all questions for this jurisdiction, filter client-side.
+      const filter = { jurisdiction };
+      if (lawTypeFilter !== 'all') filter.law_type = lawTypeFilter;
+      allQ = await base44.entities.LawQuestion.filter(filter, null, 2000);
+      if (trades.length > 0) {
+        const tradeSet = new Set(trades);
+        allQ = allQ.filter(q => tradeSet.has(q.trade));
+      }
     }
 
     // Deduplicate
     const seen = new Set();
     allQ = allQ.filter(q => { if (seen.has(q.id)) return false; seen.add(q.id); return true; });
 
-    // Spaced-repetition-aware queue construction.
-    // 1. Split into "due" (next_review_date null or <= now) and "not yet due" (future).
-    // 2. Sort due by confidence_tier asc, then next_review_date asc (most overdue first).
-    // 3. Build the queue from due first; backfill from not-yet-due (sorted by tier asc)
-    //    if the due group is smaller than the full result set (capped at 50).
-    // 4. Light shuffle within each confidence tier so order isn't fully predictable.
-    const now = Date.now();
-    const due = [];
-    const notDue = [];
-    for (const q of allQ) {
-      const nr = q.next_review_date ? new Date(q.next_review_date).getTime() : null;
-      if (nr === null || nr <= now) due.push(q);
-      else notDue.push(q);
-    }
-
-    const tierOf = (q) => (q.confidence_tier ?? 0);
-    const reviewTimeOf = (q) => q.next_review_date ? new Date(q.next_review_date).getTime() : 0;
-
-    // Group by tier, shuffle within each tier, then flatten in tier order.
-    const shuffle = (arr) => {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
+    let selected;
+    if (paramReviewIds.length > 0) {
+      // Review-mode session: use the priority-sorted list as the full queue.
+      selected = allQ;
+    } else {
+      // Spaced-repetition-aware queue construction.
+      // 1. Split into "due" (next_review_date null or <= now) and "not yet due" (future).
+      // 2. Sort due by confidence_tier asc, then next_review_date asc (most overdue first).
+      // 3. Build the queue from due first; backfill from not-yet-due (sorted by tier asc)
+      //    if the due group is smaller than the full result set (capped at 50).
+      // 4. Light shuffle within each confidence tier so order isn't fully predictable.
+      const now = Date.now();
+      const due = [];
+      const notDue = [];
+      for (const q of allQ) {
+        const nr = q.next_review_date ? new Date(q.next_review_date).getTime() : null;
+        if (nr === null || nr <= now) due.push(q);
+        else notDue.push(q);
       }
-      return a;
-    };
-    const buildByTier = (group) => {
-      const byTier = new Map();
-      for (const q of group) {
-        const t = tierOf(q);
-        if (!byTier.has(t)) byTier.set(t, []);
-        byTier.get(t).push(q);
-      }
-      const out = [];
-      for (const t of [...byTier.keys()].sort((a, b) => a - b)) {
-        out.push(...shuffle(byTier.get(t)));
-      }
-      return out;
-    };
 
-    const dueSorted = buildByTier(due);
-    const notDueSorted = buildByTier(notDue);
+      const tierOf = (q) => (q.confidence_tier ?? 0);
 
-    const targetSize = Math.min(allQ.length, 50);
-    let selected = dueSorted;
-    if (dueSorted.length < targetSize && notDueSorted.length > 0) {
-      const backfill = notDueSorted.slice(0, targetSize - dueSorted.length);
-      selected = [...dueSorted, ...backfill];
+      // Group by tier, shuffle within each tier, then flatten in tier order.
+      const shuffle = (arr) => {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      };
+      const buildByTier = (group) => {
+        const byTier = new Map();
+        for (const q of group) {
+          const t = tierOf(q);
+          if (!byTier.has(t)) byTier.set(t, []);
+          byTier.get(t).push(q);
+        }
+        const out = [];
+        for (const t of [...byTier.keys()].sort((a, b) => a - b)) {
+          out.push(...shuffle(byTier.get(t)));
+        }
+        return out;
+      };
+
+      const dueSorted = buildByTier(due);
+      const notDueSorted = buildByTier(notDue);
+
+      const targetSize = Math.min(allQ.length, 50);
+      selected = dueSorted;
+      if (dueSorted.length < targetSize && notDueSorted.length > 0) {
+        const backfill = notDueSorted.slice(0, targetSize - dueSorted.length);
+        selected = [...dueSorted, ...backfill];
+      }
     }
 
     // Create study session
     const session = await base44.entities.StudySession.create({
-      trades: trades.length > 0 ? trades : ['General'],
-      jurisdiction,
+      trades: sessionTrades.length > 0 ? sessionTrades : ['General'],
+      jurisdiction: sessionJurisdiction,
       total_questions: selected.length,
       correct_answers: 0,
       completed: false,

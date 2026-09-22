@@ -78,7 +78,6 @@ export default function Review() {
               <div className="space-y-4">
                 <p className="text-gray-600 mb-4">
                   You have {questionsToReview.length} question{questionsToReview.length !== 1 ? 's' : ''} that need review.
-                  Practice mode with these questions is coming soon!
                 </p>
                 
                 {questionsToReview.map((question, index) => (
@@ -109,7 +108,7 @@ export default function Review() {
                 ))}
 
                 <div className="pt-4">
-                  <Link to={createPageUrl('Study')}>
+                  <Link to={createPageUrl('Study') + '?reviewIds=' + questionsToReview.map(q => q.id).join(',')}>
                     <Button className="w-full bg-purple-600 hover:bg-purple-700 text-gray-900 h-12">
                       Practice These Questions
                     </Button>
