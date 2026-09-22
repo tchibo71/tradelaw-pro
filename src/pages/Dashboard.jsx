@@ -18,7 +18,8 @@ import {
   Sparkles,
   Trash2,
   Clock,
-  Brain
+  Brain,
+  FileText
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -296,6 +297,28 @@ export default function Dashboard() {
                   <h3 className="text-2xl font-bold text-navy-900 mb-2">Neuroplasticity Training</h3>
                   <p className="text-gray-600">
                     The hardest mode. Interleaving, WHY frames, generation effect, timed. Builds durable recall.
+                  </p>
+                </CardContent>
+              </Link>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Card className="shadow-xl border-2 hover:shadow-2xl transition-all cursor-pointer group h-full border-indigo-200">
+              <Link to={createPageUrl('ExamSimulation')}>
+                <CardContent className="p-8">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-4 rounded-xl bg-indigo-100 group-hover:bg-indigo-200 transition-colors">
+                      <FileText className="h-8 w-8 text-indigo-600" />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-navy-900 mb-2">Exam Simulation</h3>
+                  <p className="text-gray-600">
+                    Full mock exam. 100-question Trade or 50-question Business & Law format. One timer, free navigation, pass/fail scoring.
                   </p>
                 </CardContent>
               </Link>

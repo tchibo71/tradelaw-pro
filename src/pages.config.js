@@ -56,6 +56,7 @@ import Study from './pages/Study';
 import UpdatePrefs from './pages/UpdatePrefs';
 import TimedDrill from './pages/TimedDrill';
 import NeuroDrill from './pages/NeuroDrill';
+import ExamSimulation from './pages/ExamSimulation';
 import __Layout from './Layout.jsx';
 
 
@@ -69,6 +70,7 @@ export const PAGES = {
     "UpdatePrefs": UpdatePrefs,
     "TimedDrill": TimedDrill,
     "NeuroDrill": NeuroDrill,
+    "ExamSimulation": ExamSimulation,
 }
 
 export const pagesConfig = {
