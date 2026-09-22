@@ -51,6 +51,12 @@ export default function Dashboard() {
     enabled: !!user?.email,
   });
 
+  const { data: allQuestions = [] } = useQuery({
+    queryKey: ['lawQuestions', user?.email],
+    queryFn: () => base44.entities.LawQuestion.filter({ created_by: user.email }, null, 2000),
+    enabled: !!user?.email,
+  });
+
   useEffect(() => {
     base44.auth.me().then(currentUser => {
       setUser(currentUser);
@@ -63,6 +69,25 @@ export default function Dashboard() {
   const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
   const totalSessions = sessions.length;
   const questionsToReview = reviewQueue.length;
+
+  // Weak areas: group questions by knowledge_domain, compute average confidence_tier
+  // and count of low-tier (0-1) questions, then sort weakest first.
+  const domainMap = new Map();
+  for (const q of allQuestions) {
+    const domain = q.knowledge_domain || 'Uncategorized';
+    if (!domainMap.has(domain)) domainMap.set(domain, []);
+    domainMap.get(domain).push(q);
+  }
+  const weakAreas = [...domainMap.entries()].map(([domain, qs]) => {
+    const avgTier = qs.reduce((sum, q) => sum + (q.confidence_tier ?? 0), 0) / qs.length;
+    const lowTierCount = qs.filter(q => (q.confidence_tier ?? 0) <= 1).length;
+    return { domain, avgTier, lowTierCount, total: qs.length };
+  }).sort((a, b) => a.avgTier - b.avgTier);
+  const bottomWeakAreas = weakAreas.slice(0, 5);
+
+  const studyUrl = createPageUrl('Study') +
+    '?trades=' + encodeURIComponent((user?.preferred_trades || []).join(',')) +
+    '&jurisdiction=' + encodeURIComponent(user?.preferred_jurisdiction || '');
 
   if (!user) {
     return (
@@ -137,6 +162,50 @@ export default function Dashboard() {
             }}
           />
         </div>
+
+        {/* Weak Areas */}
+        {bottomWeakAreas.length > 0 && (
+          <Card className="shadow-xl border-2 mb-8">
+            <CardHeader className="bg-gradient-to-r from-orange-100 to-red-100">
+              <CardTitle className="text-xl text-navy-900 flex items-center gap-2">
+                <Target className="h-5 w-5 text-orange-600" />
+                Weak Areas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-3">
+                {bottomWeakAreas.map((area) => (
+                  <Link
+                    key={area.domain}
+                    to={studyUrl}
+                    className="flex items-center justify-between gap-4 p-4 rounded-lg bg-gray-50 hover:bg-orange-50 transition-colors group"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-navy-900 truncate group-hover:text-orange-900">
+                        {area.domain}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 max-w-[120px] h-2 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-red-400 to-orange-400"
+                            style={{ width: `${(area.avgTier / 5) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-gray-600 whitespace-nowrap">
+                          {area.avgTier.toFixed(1)}/5 avg
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-2xl font-bold text-orange-600">{area.lowTierCount}</p>
+                      <p className="text-xs text-gray-500">low-tier</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
