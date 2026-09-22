@@ -267,7 +267,7 @@ export default function GenerateQuestions() {
   const [selectedJurisdiction, setSelectedJurisdiction] = useState(prefillJurisdiction);
   const [questionCount, setQuestionCount] = useState(5);
   const [generating, setGenerating] = useState(false);
-  const [genProgress, setGenProgress] = useState({ step: 0, current: 0, total: 0, stage: '' });
+  const [genProgress, setGenProgress] = useState({ step: 0, current: 0, total: 0, stage: '', completedCalls: 0, estimatedTotal: 0 });
   const [results, setResults] = useState(null);
   const [focusArea, setFocusArea] = useState('');
   const [tradeSearch, setTradeSearch] = useState('');
@@ -290,6 +290,11 @@ export default function GenerateQuestions() {
   const queryClient = useQueryClient();
 
   const filteredTrades = TRADES.filter(t => t.toLowerCase().includes(tradeSearch.toLowerCase()));
+
+  // Estimated LLM calls: 1 for step 1 (only if laws not cached) + lawsNeeded for step 2 + questionCount for step 3
+  const estimatedLLMCalls = (lawRegistry.length === 0 ? 1 : 0)
+    + Math.max(1, Math.ceil(questionCount / QUESTIONS_PER_LAW))
+    + questionCount;
 
   useEffect(() => {
     const handler = (e) => { if (tradeRef.current && !tradeRef.current.contains(e.target)) setShowTradeDropdown(false); };
@@ -324,15 +329,18 @@ export default function GenerateQuestions() {
     setGenerating(true);
     setResults(null);
 
+    let completedCalls = 0;
+
     try {
       const effectiveJurisdiction = jurisdictionMode === 'federal' ? 'Federal' : selectedJurisdiction;
 
       // ── STEP 1: Enumerate laws (web search ON — only time it fires) ──────────
-      setGenProgress({ step: 1, current: 0, total: 1, stage: `Step 1 of 3: Enumerating ${effectiveJurisdiction} laws (web search)...` });
+      setGenProgress({ step: 1, current: 0, total: 1, stage: `Step 1 of 3: Enumerating ${effectiveJurisdiction} laws (web search)...`, completedCalls: 0, estimatedTotal: estimatedLLMCalls });
       let laws = lawRegistry.length > 0 ? lawRegistry : null;
       if (!laws) {
         const r1 = await step1EnumerateLaws(selectedTrades, effectiveJurisdiction, jurisdictionMode, focusArea);
         laws = r1?.laws || [];
+        completedCalls += 1;
       }
       if (laws.length === 0) throw new Error('Step 1 failed: Could not enumerate applicable laws.');
       if (lawRegistry.length === 0) setLawRegistry(laws);
@@ -361,9 +369,12 @@ export default function GenerateQuestions() {
           step: 2,
           current: i,
           total: lawsToProcess.length,
-          stage: `Step 2 of 3: Planning slots for law${batch.length > 1 ? 's' : ''} ${i + 1}–${Math.min(i + batch.length, lawsToProcess.length)} of ${lawsToProcess.length} (no web search)...`
+          stage: `Step 2 of 3: Planning slots for law${batch.length > 1 ? 's' : ''} ${i + 1}–${Math.min(i + batch.length, lawsToProcess.length)} of ${lawsToProcess.length} (no web search)...`,
+          completedCalls,
+          estimatedTotal: estimatedLLMCalls
         });
         const batchResults = await Promise.all(batch.map(law => step2PlanSlots(law, effectiveJurisdiction, selectedTrades, focusArea)));
+        completedCalls += batch.length;
         for (let j = 0; j < batch.length; j++) {
           const law = batch[j];
           const dynamicCap = slotsForLaw(law);
@@ -399,7 +410,9 @@ export default function GenerateQuestions() {
           step: 3,
           current: filledCount,
           total: slotsToFill.length,
-          stage: `Step 3 of 3: Generating questions ${filledCount + 1}–${Math.min(filledCount + batch.length, slotsToFill.length)} of ${slotsToFill.length} (no web search)...`
+          stage: `Step 3 of 3: Generating questions ${filledCount + 1}–${Math.min(filledCount + batch.length, slotsToFill.length)} of ${slotsToFill.length} (no web search)...`,
+          completedCalls,
+          estimatedTotal: estimatedLLMCalls
         });
 
         const batchResults = await Promise.all(batch.map(async (slot) => {
@@ -408,6 +421,7 @@ export default function GenerateQuestions() {
           if (q && isValidQuestion(q, new Set(seenFingerprints))) return { slot, q };
           return { slot, q: null };
         }));
+        completedCalls += batch.length;
 
         for (const { slot, q } of batchResults) {
           if (q) {
@@ -424,7 +438,7 @@ export default function GenerateQuestions() {
       if (allQuestions.length === 0) throw new Error('Step 3 failed: Could not generate any valid questions.');
 
       // ── Save ──────────────────────────────────────────────────────────────────
-      setGenProgress({ step: 3, current: filledCount, total: slotsToFill.length, stage: 'Saving questions...' });
+      setGenProgress({ step: 3, current: filledCount, total: slotsToFill.length, stage: 'Saving questions...', completedCalls, estimatedTotal: estimatedLLMCalls });
       const questionsToCreate = allQuestions.map(({ q, slot }, idx) => {
         let correctAnswer = q.correct_answer?.trim();
         const options = (q.options || []).map(o => o?.trim());
@@ -468,13 +482,15 @@ export default function GenerateQuestions() {
         openSlotsAvailable: openSlots.length,
         trades: selectedTrades,
         lawsCovered: laws.length,
-        jurisdiction: effectiveJurisdiction
+        jurisdiction: effectiveJurisdiction,
+        actualLLMCalls: completedCalls,
+        estimatedLLMCalls
       });
     } catch (error) {
       setResults({ success: false, error: error.message });
     } finally {
       setGenerating(false);
-      setGenProgress({ step: 0, current: 0, total: 0, stage: '' });
+      setGenProgress({ step: 0, current: 0, total: 0, stage: '', completedCalls: 0, estimatedTotal: 0 });
     }
   };
 
@@ -850,6 +866,12 @@ Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } 
               </div>
             </div>
 
+            {selectedTrades.length > 0 && (jurisdictionMode === 'federal' || selectedJurisdiction) && !generating && (
+              <p className="text-xs text-gray-500 text-center -mb-1">
+                This will make approximately {estimatedLLMCalls} AI generation call{estimatedLLMCalls !== 1 ? 's' : ''}.
+              </p>
+            )}
+
             <Button
               onClick={generateQuestions}
               disabled={selectedTrades.length === 0 || (jurisdictionMode === 'state' && !selectedJurisdiction) || generating}
@@ -879,7 +901,10 @@ Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } 
                   ))}
                 </div>
                 {genProgress.stage && (
-                  <p className="text-xs text-gray-600">{genProgress.stage}</p>
+                  <p className="text-xs text-gray-600">
+                    {genProgress.stage}
+                    {genProgress.estimatedTotal > 0 && ` · ${genProgress.completedCalls}/${genProgress.estimatedTotal} AI calls`}
+                  </p>
                 )}
                 {genProgress.total > 0 && (
                   <div className="space-y-1">
@@ -911,6 +936,11 @@ Return JSON: { "fixes": [ { "index": number, "rewritten": "new question text" } 
                           <p className="text-xs text-amber-700 mt-1">
                             ⚠ {results.filteredOut} slot{results.filteredOut !== 1 ? 's' : ''} needed retries.
                             {results.exhaustedSlots > 0 && ` ${results.exhaustedSlots} could not be filled.`}
+                          </p>
+                        )}
+                        {results.actualLLMCalls != null && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            🔢 {results.actualLLMCalls} AI calls made (estimated {results.estimatedLLMCalls}).
                           </p>
                         )}
                         <Link to={createPageUrl(`Study?trades=${encodeURIComponent(results.trades.join(','))}&jurisdiction=${encodeURIComponent(results.jurisdiction || selectedJurisdiction)}`)} className="inline-block mt-3">
