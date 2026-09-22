@@ -73,7 +73,25 @@ export default function Study() {
     const seen = new Set();
     allQ = allQ.filter(q => { if (seen.has(q.id)) return false; seen.add(q.id); return true; });
 
-    // Shuffle all questions randomly (Fisher-Yates)
+    // Spaced-repetition-aware queue construction.
+    // 1. Split into "due" (next_review_date null or <= now) and "not yet due" (future).
+    // 2. Sort due by confidence_tier asc, then next_review_date asc (most overdue first).
+    // 3. Build the queue from due first; backfill from not-yet-due (sorted by tier asc)
+    //    if the due group is smaller than the full result set (capped at 50).
+    // 4. Light shuffle within each confidence tier so order isn't fully predictable.
+    const now = Date.now();
+    const due = [];
+    const notDue = [];
+    for (const q of allQ) {
+      const nr = q.next_review_date ? new Date(q.next_review_date).getTime() : null;
+      if (nr === null || nr <= now) due.push(q);
+      else notDue.push(q);
+    }
+
+    const tierOf = (q) => (q.confidence_tier ?? 0);
+    const reviewTimeOf = (q) => q.next_review_date ? new Date(q.next_review_date).getTime() : 0;
+
+    // Group by tier, shuffle within each tier, then flatten in tier order.
     const shuffle = (arr) => {
       const a = [...arr];
       for (let i = a.length - 1; i > 0; i--) {
@@ -82,8 +100,29 @@ export default function Study() {
       }
       return a;
     };
+    const buildByTier = (group) => {
+      const byTier = new Map();
+      for (const q of group) {
+        const t = tierOf(q);
+        if (!byTier.has(t)) byTier.set(t, []);
+        byTier.get(t).push(q);
+      }
+      const out = [];
+      for (const t of [...byTier.keys()].sort((a, b) => a - b)) {
+        out.push(...shuffle(byTier.get(t)));
+      }
+      return out;
+    };
 
-    const selected = shuffle(allQ);
+    const dueSorted = buildByTier(due);
+    const notDueSorted = buildByTier(notDue);
+
+    const targetSize = Math.min(allQ.length, 50);
+    let selected = dueSorted;
+    if (dueSorted.length < targetSize && notDueSorted.length > 0) {
+      const backfill = notDueSorted.slice(0, targetSize - dueSorted.length);
+      selected = [...dueSorted, ...backfill];
+    }
 
     // Create study session
     const session = await base44.entities.StudySession.create({
