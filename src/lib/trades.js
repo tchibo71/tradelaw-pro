@@ -924,4 +924,87 @@ export const TRADES = [
   "Interpreter",
   "Certified Legal Interpreter",
   "Sign Language Interpreter",
+
+  // ── Knowledge Subjects: Soil & Plant Sciences ─────────────────────────────
+  "Soil Science",
+  "Soil Physics",
+  "Soil Chemistry",
+  "Soil Biology",
+  "Soil Classification & Survey",
+  "Soil Fertility & Management",
+  "Agronomy",
+  "Crop Science",
+  "Weed Science",
+  "Crop Protection",
+  "Precision Agriculture",
+  "Agriculture",
+  "Sustainable Agriculture",
+  "Irrigation Management",
+  "Agricultural Economics",
+  "Farm Management",
+
+  // ── Knowledge Subjects: Natural Sciences ──────────────────────────────────
+  "Biology",
+  "Cell Biology",
+  "Genetics",
+  "Ecology",
+  "Microbiology",
+  "Anatomy & Physiology",
+  "Physics",
+  "Classical Mechanics",
+  "Thermodynamics",
+  "Electromagnetism",
+  "Optics",
+  "Modern Physics",
+  "Chemistry",
+  "Organic Chemistry",
+  "Analytical Chemistry",
+  "Biochemistry",
+  "Physical Chemistry",
+  "Astronomy",
+  "Solar System Astronomy",
+  "Stars & Galaxies",
+  "Cosmology",
+  "Observational Astronomy",
+  "Mathematics",
+  "Algebra",
+  "Geometry",
+  "Trigonometry",
+  "Calculus",
+  "Statistics & Probability",
+
+  // ── Knowledge Subjects: Accounting ────────────────────────────────────────
+  "Accounting",
+  "Financial Accounting",
+  "Managerial Accounting",
+  "Taxation",
+  "Auditing",
+  "Cost Accounting",
+
+  // ── Knowledge Subjects: Animal Science ────────────────────────────────────
+  "Animal Science",
+  "Companion Animal Science",
+  "Livestock Science",
+  "Equine Science",
+  "Avian & Poultry Science",
+  "Exotic & Wildlife Science",
+
 ];
+
+// Subjects that use knowledge/reference-based generation rather than law enumeration.
+// When any selected trade is in this set, the generation pipeline adapts to enumerate
+// references, standards, textbook chapters, and professional certification requirements
+// instead of (or in addition to) laws.
+export const KNOWLEDGE_SUBJECTS = new Set([
+  "Soil Science", "Soil Physics", "Soil Chemistry", "Soil Biology", "Soil Classification & Survey", "Soil Fertility & Management",
+  "Agronomy", "Crop Science", "Weed Science", "Crop Protection", "Precision Agriculture",
+  "Agriculture", "Sustainable Agriculture", "Irrigation Management", "Agricultural Economics", "Farm Management",
+  "Biology", "Cell Biology", "Genetics", "Ecology", "Microbiology", "Anatomy & Physiology",
+  "Physics", "Classical Mechanics", "Thermodynamics", "Electromagnetism", "Optics", "Modern Physics",
+  "Chemistry", "Organic Chemistry", "Analytical Chemistry", "Biochemistry", "Physical Chemistry",
+  "Astronomy", "Solar System Astronomy", "Stars & Galaxies", "Cosmology", "Observational Astronomy",
+  "Mathematics", "Algebra", "Geometry", "Trigonometry", "Calculus", "Statistics & Probability",
+  "Accounting", "Financial Accounting", "Managerial Accounting", "Taxation", "Auditing", "Cost Accounting",
+  "Animal Science", "Companion Animal Science", "Livestock Science", "Equine Science", "Avian & Poultry Science", "Exotic & Wildlife Science",
+  "Farrier",
+]);

@@ -42,17 +42,18 @@
       "type": "string",
       "enum": [
         "statute",
-        "regulation"
+        "regulation",
+        "knowledge"
       ],
-      "description": "Whether this is statutory or regulatory"
+      "description": "Whether this is statutory, regulatory, or general professional knowledge"
     },
     "law_citation": {
       "type": "string",
-      "description": "Citation reference (e.g., 'OSHA 1926.451', 'CA Business and Professions Code \u00a7 7031')"
+      "description": "Citation reference (e.g., 'OSHA 1926.451', 'CA Business and Professions Code \u00a7 7031', or 'Brady & Weil, Nature & Properties of Soils, Ch. 3')"
     },
     "legal_fact_fingerprint": {
       "type": "string",
-      "description": "Short plain-English description of the exact legal fact being tested. Used for intent-based deduplication."
+      "description": "Short plain-English description of the exact fact being tested. Used for intent-based deduplication."
     },
     "explanation": {
       "type": "string",
@@ -72,7 +73,7 @@
     },
     "knowledge_domain": {
       "type": "string",
-      "description": "Knowledge domain category (e.g. Safety and Health, Electrical, Plumbing, Septic and Subsurface Drainage, etc.)"
+      "description": "Knowledge domain category (e.g. Safety and Health, Electrical, Plumbing, Septic and Subsurface Drainage, Soil Physics, Organic Chemistry, Equine Anatomy, etc.)"
     },
     "difficulty": {
       "type": "string",

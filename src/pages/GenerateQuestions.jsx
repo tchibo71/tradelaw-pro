@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TRADES } from '@/lib/trades';
+import { TRADES, KNOWLEDGE_SUBJECTS } from '@/lib/trades';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -67,10 +67,25 @@ const normalizeFP = (str) =>
 
 // STEP 1 ONLY — web search enabled here and nowhere else
 const step1EnumerateLaws = (trades, jurisdiction, mode, focusArea) => {
+  const hasKnowledge = trades.some(t => KNOWLEDGE_SUBJECTS.has(t));
   const scope = mode === 'federal'
-    ? 'FEDERAL law only (OSHA, EPA, DOT, FTC etc). Do NOT include state laws.'
-    : `${jurisdiction} STATE law only. Do NOT include federal laws.`;
-  const focusClause = focusArea ? `\nFOCUS AREA — Prioritize laws and regulations most relevant to: "${focusArea}". Still include foundational licensing/safety laws but weight the list toward this topic.` : '';
+    ? (hasKnowledge
+      ? 'FEDERAL law, federal-level standards, and general knowledge references. Do NOT include state-specific laws.'
+      : 'FEDERAL law only (OSHA, EPA, DOT, FTC etc). Do NOT include state laws.')
+    : (hasKnowledge
+      ? `${jurisdiction} STATE law, state-specific professional licensing requirements, AND general knowledge references (use law_type="knowledge" for general references that are not state-specific).`
+      : `${jurisdiction} STATE law only. Do NOT include federal laws.`);
+  const focusClause = focusArea ? `\nFOCUS AREA — Prioritize content most relevant to: "${focusArea}". Still include foundational material but weight the list toward this topic.` : '';
+  const knowledgeClause = hasKnowledge ? `
+KNOWLEDGE SUBJECTS DETECTED in the trade list. For any trade that is a knowledge-based profession or academic subject (e.g., Soil Science, Physics, Chemistry, Accounting, Animal Science, Farrier, etc.), enumerate the key references, standards, textbook chapters, and professional certification requirements instead of laws. Use law_type="knowledge" for general knowledge references. Use law_type="statute" or "regulation" for any state-specific professional licensing requirements (e.g., CPA license requirements, certified crop advisor requirements, pesticide applicator license, farrier licensing where required).
+Knowledge subject sources to draw from:
+- Professional certification body references (ASA, CPA exam blueprints, AFA, AVMA, NRC, NASEM, etc.)
+- Standard textbooks and reference works (cite by title and chapter)
+- Industry standards (ASTM, ANSI, etc.)
+- State-specific professional licensing requirements where they exist
+- Federal-level requirements where applicable (USDA, EPA, FDA, etc.)
+- For Farrier: draw from publicly available farrier education materials, American Farriers Association (AFA) certification references, equine anatomy and biomechanics texts, and horseshoeing principles including topics from "Principles of Horseshoeing" by Doug Butler (use publicly available summaries, course materials, and references — do not reproduce copyrighted text)
+` : '';
 
   const eastTNLayer = isEastTNJurisdiction(jurisdiction) ? `
 8. East Tennessee local jurisdiction knowledge (ACTIVE — jurisdiction is in East Tennessee service area):
@@ -84,7 +99,7 @@ const step1EnumerateLaws = (trades, jurisdiction, mode, focusArea) => {
 
   return base44.integrations.Core.InvokeLLM({
     prompt: `List applicable laws and regulations for these licensed trades in scope: ${scope}
-Trades: ${trades.join(', ')}${focusClause}
+Trades: ${trades.join(', ')}${focusClause}${knowledgeClause}
 
 Draw from ALL of the following source layers:
 1. Federal statutes and agency regulations (OSHA 29 CFR 1926/1910, EPA, DOT, etc.)
@@ -205,14 +220,22 @@ This slot tests location-specific jurisdiction knowledge for the user's East Ten
 - Sevierville local driveway standard: max 10% slope first 20 feet, 15% remainder — local standard not in state code.
 Questions must be scenario-based with specific locations. Present realistic job situations and ask the user to identify permit routing, fee amounts, processing timelines, or jurisdictional facts.` : '';
 
+  const knowledgeInstructions = slot.law_type === 'knowledge' ? `
+KNOWLEDGE SUBJECT INSTRUCTIONS:
+This slot tests general professional knowledge from a reference/standard/textbook, NOT a legal code or regulation.
+- Frame the question as a professional knowledge question, not a legal compliance question.
+- The explanation should cite the specific reference, standard, or textbook section (not a legal code section).
+- knowledge_domain should be appropriate to the academic subject (e.g., "Soil Physics", "Organic Chemistry", "Equine Anatomy", "Financial Accounting", "Classical Mechanics").
+` : '';
+
   return base44.integrations.Core.InvokeLLM({
     prompt: `Generate exactly 1 professional licensing exam question for ${trades.join(', ')} in ${jurisdiction}.
-Law: ${slot.law_citation} — ${slot.law_title} (${slot.law_type})
+Source: ${slot.law_citation} — ${slot.law_title} (${slot.law_type})
 Dimension: ${slot.dimension}
 Legal fact to test: ${slot.legal_fact_fingerprint}
 Hint: ${slot.question_hint}
 Format: ${slot.suggested_format}
-${fpList}${focusClause}${ahjInstructions}${eastTNInstructions}
+${fpList}${focusClause}${ahjInstructions}${eastTNInstructions}${knowledgeInstructions}
 Rules:
 - legal_fact_fingerprint MUST be: "${slot.legal_fact_fingerprint}"
 - law_type: "${slot.law_type}"
@@ -220,7 +243,7 @@ Rules:
 - For T/F: correct_answer is exactly "True" or "False"
 - For fill_in_blank: use _____, never reveal answer in question text
 - NEVER embed the answer in the question text
-- explanation: explain WHY the answer is correct AND the real-world consequence of getting it wrong (2-3 sentences). Must cite the specific code/standard section.
+- explanation: explain WHY the answer is correct AND the real-world consequence of getting it wrong (2-3 sentences). Must cite the specific code/standard/reference section.
 - memory_tip: (optional) one short practical sentence to remember the value or sequence (e.g. "Five feet — deeper than you are tall, you need protection.")
 - manufacturer_note: (optional) include ONLY if the answer derives from a manufacturer spec or the code defers to manufacturer instructions
 - knowledge_domain: assign one of: Safety and Health, Excavation and Earthwork, Concrete and Masonry, Structural and Framing, Retaining Walls, Electrical, Plumbing, HVAC and Mechanical, Roofing, Septic and Subsurface Drainage, Surface Drainage, Gutters and Downspouts, Permits and Inspections, Material Standards, Environmental and Site, Licensing, Authority Having Jurisdiction and Permit Routing
