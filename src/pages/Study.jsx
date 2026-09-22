@@ -6,11 +6,34 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, BookOpen, CheckCircle, XCircle, RotateCcw, Home, GraduationCap } from 'lucide-react';
+import { Loader2, BookOpen, CheckCircle, XCircle, RotateCcw, Home, GraduationCap, Mic, Volume2 } from 'lucide-react';
 import MultipleChoiceCard from '@/components/study/MultipleChoiceCard';
 import TrueFalseCard from '@/components/study/TrueFalseCard';
 import FillInBlankCard from '@/components/study/FillInBlankCard';
 import AskTheMaster from '@/components/study/AskTheMaster';
+import { useVoice } from '@/hooks/use-voice';
+
+const normalizeAns = (s) => (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const matchTranscriptToOptions = (transcript, options) => {
+  const t = normalizeAns(transcript);
+  if (!t) return null;
+  // Exact match
+  for (const opt of options) {
+    if (normalizeAns(opt) === t) return opt;
+  }
+  // Substring / word overlap match
+  const tWords = new Set(t.split(' ').filter(w => w.length > 2));
+  let best = null;
+  let bestScore = 0;
+  for (const opt of options) {
+    const o = normalizeAns(opt);
+    const oWords = new Set(o.split(' ').filter(w => w.length > 2));
+    const overlap = [...tWords].filter(w => oWords.has(w)).length;
+    const score = overlap / Math.max(oWords.size, 1);
+    if (score > bestScore) { bestScore = score; best = opt; }
+  }
+  return bestScore >= 0.5 ? best : null;
+};
 
 // SRS intervals by tier (days)
 const SRS_INTERVALS = [0, 1, 2, 3, 7, 14, 30];
@@ -41,6 +64,7 @@ export default function Study() {
   const wrongAnswersRef = useRef([]);
   const answeredSinceShuffleRef = useRef(0);
   const loadingRef = useRef(false);
+  const { speak, stopSpeaking, startListening, stopListening, isListening, isSupported, voiceMode, toggleVoiceMode } = useVoice();
 
   useEffect(() => {
     base44.auth.me().then(setUser);
@@ -49,6 +73,16 @@ export default function Study() {
   useEffect(() => {
     if (user) loadQuestions();
   }, [user, lawTypeFilter]);
+
+  // Auto-speak question when voice mode is on and question changes.
+  // Must be before any early returns to respect Rules of Hooks.
+  useEffect(() => {
+    if (!voiceMode || !isSupported || finished || loading) return;
+    const q = queue[currentIndex];
+    if (!q?.question_text) return;
+    speak(q.question_text);
+    return () => { stopSpeaking(); };
+  }, [voiceMode, isSupported, currentIndex, finished, loading, queue[currentIndex]?.id]);
 
   const loadQuestions = async () => {
     if (loadingRef.current) return;
@@ -336,6 +370,19 @@ export default function Study() {
 
   const currentQuestion = queue[currentIndex];
 
+  const handleVoiceAnswer = (transcript) => {
+    if (!currentQuestion) return;
+    if (currentQuestion.question_type === 'multiple_choice' && currentQuestion.options) {
+      const matched = matchTranscriptToOptions(transcript, currentQuestion.options);
+      if (matched) handleAnswer(matched, matched === currentQuestion.correct_answer);
+    } else if (currentQuestion.question_type === 'true_false') {
+      const matched = matchTranscriptToOptions(transcript, ['True', 'False']);
+      if (matched) handleAnswer(matched, matched === currentQuestion.correct_answer);
+    } else if (currentQuestion.question_type === 'fill_in_blank') {
+      handleAnswer(transcript, false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
@@ -345,6 +392,20 @@ export default function Study() {
             <Button variant="ghost" size="sm">← Dashboard</Button>
           </Link>
           <div className="flex items-center gap-3">
+            {/* Voice Mode toggle — only when supported */}
+            {isSupported && (
+              <button
+                onClick={toggleVoiceMode}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-semibold transition-all ${
+                  voiceMode
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-700 hover:border-indigo-400'
+                }`}
+              >
+                <Volume2 className="h-4 w-4" />
+                Voice
+              </button>
+            )}
             {/* Law Type Filter */}
             <Select value={lawTypeFilter} onValueChange={(v) => setLawTypeFilter(v)}>
               <SelectTrigger className="w-44 bg-white">
@@ -384,6 +445,23 @@ export default function Study() {
             </Badge>
           )}
         </div>
+
+        {/* Voice mic button — above question card, only in voice mode */}
+        {voiceMode && isSupported && (
+          <div className="flex justify-center mb-4">
+            <button
+              onClick={() => isListening ? stopListening() : startListening(handleVoiceAnswer)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full border-2 transition-all text-sm font-semibold ${
+                isListening
+                  ? 'bg-red-600 border-red-600 text-white animate-pulse'
+                  : 'bg-white border-indigo-400 text-indigo-700 hover:bg-indigo-50'
+              }`}
+            >
+              <Mic className="h-4 w-4" />
+              {isListening ? 'Listening…' : 'Speak Answer'}
+            </button>
+          </div>
+        )}
 
         {/* Question card */}
         {currentQuestion?.question_type === 'multiple_choice' && (

@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Loader2, CheckCircle, XCircle, Brain, Home, RotateCcw, Info, GraduationCap } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Brain, Home, RotateCcw, Info, GraduationCap, Mic, Volume2 } from 'lucide-react';
 import TimerDisplay, { getLevelConfig } from '@/components/study/TimerDisplay';
 import AskTheMaster from '@/components/study/AskTheMaster';
 import MultipleChoiceCard from '@/components/study/MultipleChoiceCard';
 import TrueFalseCard from '@/components/study/TrueFalseCard';
 import FillInBlankCard from '@/components/study/FillInBlankCard';
+import { useVoice } from '@/hooks/use-voice';
 
 const NEURO_TIMER_LEVEL = 'intermediate_low'; // 35s minimum, cannot be disabled
 const SESSION_LENGTH = 20;
@@ -116,10 +117,21 @@ export default function NeuroDrill() {
   const [timeoutReveal, setTimeoutReveal] = useState(false);
   const timerRef = useRef(null);
   const loadingRef = useRef(false);
+  const { speak, stopSpeaking, startListening, stopListening, isListening, isSupported, voiceMode, toggleVoiceMode } = useVoice();
 
   const levelConfig = getLevelConfig(NEURO_TIMER_LEVEL);
 
   useEffect(() => { base44.auth.me().then(setUser); }, []);
+
+  // Auto-speak question when voice mode is on and question changes
+  useEffect(() => {
+    if (!voiceMode || !isSupported || phase !== 'drilling') return;
+    const q = sessionQueue[currentIndex];
+    if (!q) return;
+    const text = (q._neuroType === 'elaborative' && q._whyQuestion) ? q._whyQuestion : q.question_text;
+    if (text) speak(text);
+    return () => { stopSpeaking(); };
+  }, [voiceMode, isSupported, currentIndex, phase, sessionQueue[currentIndex]?._whyQuestion, sessionQueue[currentIndex]?.id]);
 
   const loadSession = async () => {
     if (loadingRef.current) return;
@@ -424,6 +436,19 @@ export default function NeuroDrill() {
             <Badge className="bg-violet-800 text-violet-200 text-xs">NEURO</Badge>
             {isElaborative && <Badge className="bg-indigo-700 text-indigo-100 text-xs">WHY FRAME</Badge>}
             {isGeneration && <Badge className="bg-emerald-800 text-emerald-100 text-xs">GENERATION</Badge>}
+            {isSupported && (
+              <button
+                onClick={toggleVoiceMode}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-xs font-semibold transition-all ${
+                  voiceMode
+                    ? 'bg-violet-600 border-violet-600 text-white'
+                    : 'bg-transparent border-gray-600 text-gray-300 hover:border-violet-400'
+                }`}
+              >
+                <Volume2 className="h-3.5 w-3.5" />
+                Voice
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-green-400 font-semibold flex items-center gap-1"><CheckCircle className="h-4 w-4" />{sessionStats.correct}</span>
@@ -471,6 +496,21 @@ export default function NeuroDrill() {
                   value={genInput}
                   onChange={e => setGenInput(e.target.value)}
                 />
+                {voiceMode && isSupported && (
+                  <div className="mt-2 flex justify-center">
+                    <button
+                      onClick={() => isListening ? stopListening() : startListening(setGenInput)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all text-xs font-semibold ${
+                        isListening
+                          ? 'bg-red-600 border-red-600 text-white animate-pulse'
+                          : 'bg-emerald-900/40 border-emerald-500 text-emerald-300 hover:bg-emerald-800/50'
+                      }`}
+                    >
+                      <Mic className="h-3.5 w-3.5" />
+                      {isListening ? 'Listening…' : 'Speak Answer'}
+                    </button>
+                  </div>
+                )}
               </div>
               <Button
                 className="w-full bg-emerald-700 hover:bg-emerald-600 text-white"
