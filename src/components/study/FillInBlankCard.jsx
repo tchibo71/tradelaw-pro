@@ -37,10 +37,70 @@ const stripUnits = (str) => str.trim().toLowerCase().replace(/\s*(days?|feet|foo
 // Strip currency symbols and formatting ($ , commas)
 const stripCurrency = (str) => str.replace(/[$,]/g, '').trim();
 
+// Parse common American date formats into a canonical MM-DD (optionally YYYY-MM-DD) string.
+// Accepts: December 31, Dec 31, Dec. 31, 12/31, 12-31, 12/31/2025, Dec 31 2025, etc.
+const MONTHS = {
+  january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3,
+  april: 4, apr: 4, may: 5, june: 6, jun: 6, july: 7, jul: 7,
+  august: 8, aug: 8, september: 9, sep: 9, sept: 9, october: 10, oct: 10,
+  november: 11, nov: 11, december: 12, dec: 12,
+};
+
+const normalizeDate = (str) => {
+  const s = str.trim().toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ');
+  if (!s) return null;
+
+  // Numeric formats: MM/DD, MM/DD/YYYY, MM-DD, MM-DD-YYYY
+  const numericMatch = s.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
+  if (numericMatch) {
+    const [, m, d, y] = numericMatch;
+    const month = parseInt(m, 10);
+    const day = parseInt(d, 10);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    const year = y ? (y.length === 2 ? `20${y}` : y) : null;
+    return year ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` : `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  // Word month formats: "December 31", "Dec 31", "Dec 31 2025", "31 December", "31 Dec"
+  const monthFirst = s.match(/^([a-z]+)\s+(\d{1,2})(?:,?\s+(\d{2,4}))?$/);
+  if (monthFirst) {
+    const [, monthName, d, y] = monthFirst;
+    const month = MONTHS[monthName];
+    if (!month) return null;
+    const day = parseInt(d, 10);
+    if (day < 1 || day > 31) return null;
+    const year = y ? (y.length === 2 ? `20${y}` : y) : null;
+    return year ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` : `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  const dayFirst = s.match(/^(\d{1,2})\s+([a-z]+)(?:,?\s+(\d{2,4}))?$/);
+  if (dayFirst) {
+    const [, d, monthName, y] = dayFirst;
+    const month = MONTHS[monthName];
+    if (!month) return null;
+    const day = parseInt(d, 10);
+    if (day < 1 || day > 31) return null;
+    const year = y ? (y.length === 2 ? `20${y}` : y) : null;
+    return year ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` : `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  return null;
+};
+
 const answersMatch = (userAns, correctAns) => {
   const u = stripCurrency(userAns.trim().toLowerCase());
   const c = stripCurrency(correctAns.trim().toLowerCase());
   if (u === c) return true;
+
+  // Try date normalization — accept all American date formats
+  const uDate = normalizeDate(u);
+  const cDate = normalizeDate(c);
+  if (uDate && cDate) {
+    // Compare ignoring year if only one side has it
+    const uKey = uDate.slice(-5); // MM-DD
+    const cKey = cDate.slice(-5);
+    if (uDate === cDate || uKey === cKey) return true;
+  }
 
   // Strip units and compare cores
   const uCore = stripUnits(u);
