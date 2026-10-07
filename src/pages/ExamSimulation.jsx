@@ -76,9 +76,14 @@ export default function ExamSimulation() {
     const format = EXAM_FORMATS[selectedFormat];
 
     let allQ = await base44.entities.LawQuestion.filter({ jurisdiction: jur }, null, 2000);
+    // Essay questions require self-assessment and don't fit the auto-graded exam format
+    allQ = allQ.filter(q => q.question_type !== 'essay');
     if (trades.length > 0) {
       const ts = new Set(trades);
-      allQ = allQ.filter(q => ts.has(q.trade));
+      allQ = allQ.filter(q => {
+        const qTrades = (q.trade || '').split(',').map(t => t.trim());
+        return qTrades.some(t => ts.has(t));
+      });
     }
     const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
     const selected = shuffle(allQ).slice(0, format.questionCount);

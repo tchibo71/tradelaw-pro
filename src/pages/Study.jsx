@@ -10,6 +10,7 @@ import { Loader2, BookOpen, CheckCircle, XCircle, RotateCcw, Home, GraduationCap
 import MultipleChoiceCard from '@/components/study/MultipleChoiceCard';
 import TrueFalseCard from '@/components/study/TrueFalseCard';
 import FillInBlankCard from '@/components/study/FillInBlankCard';
+import EssayCard from '@/components/study/EssayCard';
 import AskTheMaster from '@/components/study/AskTheMaster';
 import { useVoice } from '@/hooks/use-voice';
 import DifficultySelector from '@/components/study/DifficultySelector';
@@ -134,7 +135,10 @@ export default function Study() {
       allQ = await base44.entities.LawQuestion.filter(filter, null, 2000);
       if (trades.length > 0) {
         const tradeSet = new Set(trades);
-        allQ = allQ.filter(q => tradeSet.has(q.trade));
+        allQ = allQ.filter(q => {
+          const qTrades = (q.trade || '').split(',').map(t => t.trim());
+          return qTrades.some(t => tradeSet.has(t));
+        });
       }
     }
 
@@ -497,6 +501,9 @@ export default function Study() {
         )}
         {currentQuestion?.question_type === 'fill_in_blank' && (
           <FillInBlankCard key={currentQuestion.id + currentIndex} question={currentQuestion} onAnswer={handleAnswer} />
+        )}
+        {currentQuestion?.question_type === 'essay' && (
+          <EssayCard key={currentQuestion.id + currentIndex} question={currentQuestion} onAnswer={handleAnswer} />
         )}
 
         {/* Ask The Master — always visible, visually distinct from answer choices */}

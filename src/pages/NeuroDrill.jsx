@@ -154,9 +154,14 @@ export default function NeuroDrill() {
     const jurisdiction = paramJurisdiction || user?.preferred_jurisdiction || 'Federal';
 
     let allQ = await base44.entities.LawQuestion.filter({ jurisdiction }, null, 2000);
+    // Essay questions require self-assessment and don't fit the timed drill format
+    allQ = allQ.filter(q => q.question_type !== 'essay');
     if (trades.length > 0) {
       const ts = new Set(trades);
-      allQ = allQ.filter(q => ts.has(q.trade));
+      allQ = allQ.filter(q => {
+        const qTrades = (q.trade || '').split(',').map(t => t.trim());
+        return qTrades.some(t => ts.has(t));
+      });
     }
 
     // Filter by difficulty (treat missing as "intermediate")

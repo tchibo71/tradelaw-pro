@@ -11,20 +11,21 @@
       "enum": [
         "multiple_choice",
         "fill_in_blank",
-        "true_false"
+        "true_false",
+        "essay"
       ],
       "description": "Type of question"
     },
     "correct_answer": {
       "type": "string",
-      "description": "The correct answer"
+      "description": "The correct answer (for essay, the model answer with key points)"
     },
     "options": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Answer options for multiple choice"
+      "description": "Answer options for multiple choice (empty for other types)"
     },
     "trade": {
       "type": "string",

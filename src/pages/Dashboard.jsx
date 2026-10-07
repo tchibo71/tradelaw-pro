@@ -338,6 +338,12 @@ export default function Dashboard() {
                     Generate More
                   </Button>
                 </Link>
+                <Link to={createPageUrl('NASCLAGenerator')}>
+                  <Button variant="ghost" size="sm" className="text-blue-700 hover:bg-blue-100">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    NASCLA Bundle
+                  </Button>
+                </Link>
                 <Link to={createPageUrl('History')}>
                   <Button variant="ghost" size="sm" className="text-navy-900 hover:bg-navy-200">
                     <History className="h-4 w-4 mr-2" />
